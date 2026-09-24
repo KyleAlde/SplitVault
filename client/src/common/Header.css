@@ -1,0 +1,140 @@
+.floating-header {
+    position: sticky;
+    top: 16px;
+    z-index: 100;
+    
+    width: calc(100% - 32px);
+    max-width: 1350px;
+    margin: 0 auto;
+    height: 64px;
+    padding: 0 25px;
+    box-sizing: border-box;
+
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    
+    border: 0.3px solid var(--border);
+    border-radius: 50px;
+    box-shadow: var(--shadow);
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Left Section */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: var(--text-h);
+}
+
+.brand-badge {
+    background-color: var(--primary);
+    color: #ffffff;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.brand-name {
+    font-family: 'Orbitron', var(--sans);
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 5.5px;
+    color: #64748B;
+}
+
+.pool-selector {
+    background-color: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 14px;
+    color: var(--text-h);
+    cursor: pointer;
+    outline: none;
+}
+
+/* Right Section */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.icon-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 4px; /* Small click target padding without visible box */
+    margin: 0;
+    cursor: pointer;
+    outline: none;
+    border-radius: 6px;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+/* Subtle hover interaction on the icon itself */
+.icon-btn:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+/* Accessible focus ring for keyboard navigation */
+.icon-btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Icon image dimensions */
+.nav-icon-img {
+    width: 22px; /* Increased slightly now that container padding is gone */
+    height: 22px;
+    display: block;
+    object-fit: contain;
+}
+
+/* Notification dot positioned relative to the icon boundary */
+.notification-dot {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--danger);
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+}
+
+.avatar-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    border: 2px solid var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.avatar-btn:hover {
+    background-color: var(--primary-hover);
+}

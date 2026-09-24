@@ -1,0 +1,148 @@
+:root {
+  --primary: #425b9a;
+  --primary-hover: #2c3e6b;
+  --primary-light: #eef2f9;
+
+  --accent: #059669;
+  --accent-hover: #047857;
+  --accent-bg: rgba(5, 150, 105, 0.1);
+  --accent-border: rgba(5, 150, 105, 0.4);
+
+  /* Status Colors */
+  --warning: #f59e0b;
+  --info: #3b82f6;
+  --danger: #ef4444;
+
+  /* Surfaces, Text & Neutrals */
+  --text: #475569;
+  --text-h: #0f172a;
+  --bg: #ffffff;
+  --bg-page: #ffffff; /* Set to white so full background is clean */
+  --border: #e2e8f0;
+  --code-bg: #f1f5f9;
+  --social-bg: rgba(241, 245, 249, 0.6);
+  --shadow:
+    rgba(0, 0, 0, 0.08) 0 10px 15px -3px, rgba(0, 0, 0, 0.04) 0 4px 6px -2px;
+
+  /* Typography */
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg-page);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  align-items: stretch;
+}
+
+/* Global Reset & Edge-to-Edge Canvas */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--bg-page);
+  display: block;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border-inline: none;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background-color: var(--bg-page);
+}
+
+h1, h2 {
+  font-family: var(--heading);
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 40px;
+  letter-spacing: -1px;
+  margin: 24px 0;
+}
+
+h2 {
+  font-size: 20px;
+  line-height: 120%;
+  letter-spacing: -0.2px;
+  margin: 0 0 8px;
+}
+
+p {
+  margin: 0;
+}
+
+code, .counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 14px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
+
+/* Responsive Media Queries (Placed at Top-Level) */
+@media (max-width: 1024px) {
+  :root {
+    font-size: 16px;
+  }
+  h1 {
+    font-size: 28px;
+    margin: 16px 0;
+  }
+  h2 {
+    font-size: 18px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #6b82bc;
+    --primary-hover: #8da1d4;
+    --primary-light: #1e293b;
+
+    --accent: #10b981;
+    --accent-hover: #34d399;
+    --accent-bg: rgba(16, 185, 129, 0.15);
+    --accent-border: rgba(16, 185, 129, 0.5);
+
+    --warning: #fbbf24;
+    --info: #60a5fa;
+    --danger: #f87171;
+
+    --text: #94a3b8;
+    --text-h: #f8fafc;
+    --bg: #0f172a;
+    --bg-page: #0f172a;
+    --border: #1e293b;
+    --code-bg: #1e293b;
+    --social-bg: rgba(30, 41, 59, 0.6);
+    --shadow:
+      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  }
+
+  #social .button-icon {
+    filter: invert(1) brightness(2);
+  }
+}
