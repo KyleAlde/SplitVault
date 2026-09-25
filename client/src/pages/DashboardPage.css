@@ -18,6 +18,27 @@
     gap: 24px;
 }
 
+.dashboard-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.new-claim-button {
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 6px;
+    color: #fff;
+    background: var(--primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.new-claim-button:hover {
+    background: var(--primary-hover);
+}
+
 .action-center-sidebar {
     width: 340px;
     flex-shrink: 0;

@@ -5,14 +5,18 @@ export default function Login({ onLogin }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [busy, setBusy] = useState(false);
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-
-        if (username === 'admin' && password === '1234') {
-            onLogin();
-        } else {
-            setError('Invalid username or password.');
+        setBusy(true);
+        setError('');
+        try {
+            await onLogin(username, password);
+        } catch (requestError) {
+            setError(requestError.message);
+        } finally {
+            setBusy(false);
         }
     };
 
@@ -47,8 +51,8 @@ export default function Login({ onLogin }) {
                         <p className="login-error">{error}</p>
                     )}
 
-                    <button type="submit" className="login-button">
-                        Login
+                    <button type="submit" className="login-button" disabled={busy}>
+                        {busy ? 'Signing in...' : 'Login'}
                     </button>
 
                     <button

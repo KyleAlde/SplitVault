@@ -65,6 +65,42 @@ html, body {
   background-color: var(--bg-page);
 }
 
+.auth-card {
+  width: min(420px, calc(100% - 40px));
+  margin: auto;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.auth-card form {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.auth-card input,
+.auth-card button {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  font: inherit;
+}
+
+.auth-card button {
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  background: var(--primary);
+  cursor: pointer;
+}
+
+.api-error {
+  margin: 16px 24px;
+  color: var(--danger);
+}
+
 h1, h2 {
   font-family: var(--heading);
   font-weight: 600;

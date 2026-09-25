@@ -1,4 +1,3 @@
-import React from 'react';
 import './MetricsGrid.css';
 
 export default function MetricsGrid({pool}) {
@@ -14,10 +13,6 @@ export default function MetricsGrid({pool}) {
     const totalBudget = pool.totalBudget || 0;
     const totalSpent = pool.totalSpent || 0;
     const remainingBalance = totalBudget - totalSpent;
-    const percentRemaining = totalBudget > 0 
-        ? Math.round((remainingBalance / totalBudget) * 100) 
-        : 0;
-
     return (
         <section className="metrics-grid">
             <div className="metric-card">
