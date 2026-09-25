@@ -28,6 +28,12 @@ export const createClaim = (poolId, claim) => request(`/pools/${poolId}/claims`,
   method: 'POST',
   body: JSON.stringify(claim),
 });
+export const approveClaim = (claimId) => request(`/claims/${claimId}/approve`, {
+  method: 'POST',
+});
+export const rejectClaim = (claimId) => request(`/claims/${claimId}/reject`, {
+  method: 'POST',
+});
 
 export function saveSession(session) {
   localStorage.setItem('splitvault_token', session.token);

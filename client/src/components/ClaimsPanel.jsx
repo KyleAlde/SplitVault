@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { getClaims } from '../api';
+import { useCallback, useEffect, useState } from 'react';
+import { approveClaim, getClaims, rejectClaim } from '../api';
 import './ClaimsPanel.css';
 
 const currencyFormatter = new Intl.NumberFormat('en-PH', {
@@ -22,10 +22,29 @@ function formatStatus(status) {
     return status?.toLowerCase() || 'unknown';
 }
 
-export default function ClaimsPanel({ poolId, refreshToken = 0 }) {
+export default function ClaimsPanel({ poolId, user, refreshToken = 0, onClaimReviewed }) {
     const [claims, setClaims] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [reviewingClaimId, setReviewingClaimId] = useState('');
+    const [feedback, setFeedback] = useState(null);
+
+    const loadClaims = useCallback(async () => {
+        if (!poolId) return;
+
+        setLoading(true);
+        setError('');
+        try {
+            const { claims: nextClaims } = await getClaims(poolId);
+            setClaims(nextClaims);
+        } catch (requestError) {
+            setClaims([]);
+            setError(requestError.message);
+            throw requestError;
+        } finally {
+            setLoading(false);
+        }
+    }, [poolId]);
 
     useEffect(() => {
         let active = true;
@@ -36,29 +55,45 @@ export default function ClaimsPanel({ poolId, refreshToken = 0 }) {
             };
         }
 
-        Promise.resolve().then(() => {
-            if (!active) return;
-            setLoading(true);
-            setError('');
-            return getClaims(poolId)
-                .then(({ claims: nextClaims }) => {
-                    if (active) setClaims(nextClaims);
-                })
-                .catch((requestError) => {
-                    if (active) {
-                        setClaims([]);
-                        setError(requestError.message);
-                    }
-                })
-                .finally(() => {
-                    if (active) setLoading(false);
-                });
-        });
+        Promise.resolve()
+            .then(() => {
+                if (!active) return null;
+                return loadClaims();
+            })
+            .catch(() => {
+                if (!active) return;
+            });
 
         return () => {
             active = false;
         };
-    }, [poolId, refreshToken]);
+    }, [loadClaims, poolId, refreshToken]);
+
+    async function reviewClaim(claim, action) {
+        if (reviewingClaimId) return;
+        if (action === 'reject' && !window.confirm(`Reject "${claim.title}"?`)) return;
+
+        setReviewingClaimId(claim.id);
+        setFeedback(null);
+        setError('');
+        try {
+            if (action === 'approve') {
+                await approveClaim(claim.id);
+            } else {
+                await rejectClaim(claim.id);
+            }
+            await loadClaims();
+            onClaimReviewed?.();
+            setFeedback({
+                type: 'success',
+                message: `Claim ${action === 'approve' ? 'approved' : 'rejected'} successfully.`,
+            });
+        } catch (requestError) {
+            setFeedback({ type: 'error', message: requestError.message });
+        } finally {
+            setReviewingClaimId('');
+        }
+    }
 
     return (
         <section className="claims-panel" aria-labelledby="claims-heading">
@@ -72,6 +107,11 @@ export default function ClaimsPanel({ poolId, refreshToken = 0 }) {
 
             {loading && <p className="claims-message">Loading claims...</p>}
             {!loading && error && <p className="claims-message claims-message-error" role="alert">{error}</p>}
+            {feedback && (
+                <p className={`claims-message claims-message-${feedback.type}`} role={feedback.type === 'error' ? 'alert' : 'status'}>
+                    {feedback.message}
+                </p>
+            )}
             {!loading && !error && claims.length === 0 && (
                 <p className="claims-message">No expense claims are available for this pool.</p>
             )}
@@ -109,6 +149,26 @@ export default function ClaimsPanel({ poolId, refreshToken = 0 }) {
                                 <div className="claim-receipt">
                                     <span className="claim-detail-label">Receipt</span>
                                     <span>{claim.receipt.fileName || claim.receipt.filePath || 'Receipt attached'}</span>
+                                </div>
+                            )}
+                            {user?.role === 'ADMIN' && claim.status === 'PENDING' && (
+                                <div className="claim-review-actions">
+                                    <button
+                                        className="claim-review-button claim-approve-button"
+                                        type="button"
+                                        disabled={reviewingClaimId !== '' || loading}
+                                        onClick={() => reviewClaim(claim, 'approve')}
+                                    >
+                                        {reviewingClaimId === claim.id ? 'Reviewing...' : 'Approve'}
+                                    </button>
+                                    <button
+                                        className="claim-review-button claim-reject-button"
+                                        type="button"
+                                        disabled={reviewingClaimId !== '' || loading}
+                                        onClick={() => reviewClaim(claim, 'reject')}
+                                    >
+                                        Reject
+                                    </button>
                                 </div>
                             )}
                         </article>

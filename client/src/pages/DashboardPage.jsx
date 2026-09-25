@@ -5,7 +5,7 @@ import DonutChart from '../components/DonutChart';
 import ClaimsPanel from '../components/ClaimsPanel';
 import ClaimForm from '../components/ClaimForm';
 
-export default function DashboardPage({ dashboard, selectedPoolId, onClaimSubmitted }) {
+export default function DashboardPage({ dashboard, selectedPoolId, user, onClaimSubmitted, onClaimReviewed }) {
     const [isClaimFormOpen, setIsClaimFormOpen] = useState(false);
     const [claimsRefreshToken, setClaimsRefreshToken] = useState(0);
     const pool = dashboard && {
@@ -39,7 +39,12 @@ export default function DashboardPage({ dashboard, selectedPoolId, onClaimSubmit
                 )}
                 <MetricsGrid pool={pool} />
                 <DonutChart pool={pool} />
-                <ClaimsPanel poolId={selectedPoolId} refreshToken={claimsRefreshToken} />
+                <ClaimsPanel
+                    poolId={selectedPoolId}
+                    user={user}
+                    refreshToken={claimsRefreshToken}
+                    onClaimReviewed={onClaimReviewed}
+                />
             </div>
             <div className="action-center-sidebar" />
         </div>

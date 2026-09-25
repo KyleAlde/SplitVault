@@ -154,6 +154,39 @@
     border-top: 1px dashed var(--border);
 }
 
+.claim-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.claim-review-button {
+    padding: 8px 14px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.claim-review-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.claim-approve-button {
+    background-color: var(--accent);
+}
+
+.claim-reject-button {
+    background-color: var(--danger);
+}
+
 .claims-message {
     padding: 24px 12px;
     color: var(--text);
@@ -162,6 +195,17 @@
 
 .claims-message-error {
     color: var(--danger);
+}
+
+.claims-message-success {
+    padding: 0 0 16px;
+    color: var(--accent);
+    text-align: left;
+}
+
+.claims-message-error {
+    padding: 0 0 16px;
+    text-align: left;
 }
 
 @media (max-width: 680px) {

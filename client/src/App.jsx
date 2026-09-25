@@ -64,7 +64,13 @@ function App() {
         onLogout={handleLogout}
       />
       {error && <p className="api-error" role="alert">{error}</p>}
-      <DashboardPage dashboard={dashboard} selectedPoolId={selectedPoolId} onClaimSubmitted={refreshDashboard} />
+      <DashboardPage
+        dashboard={dashboard}
+        selectedPoolId={selectedPoolId}
+        user={user}
+        onClaimSubmitted={refreshDashboard}
+        onClaimReviewed={refreshDashboard}
+      />
     </>
   );
 }
