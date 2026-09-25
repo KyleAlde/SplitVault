@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import Header from './common/Header.jsx';
+import Sidebar from './common/Sidebar.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import { clearSession, getDashboard, getPools, getStoredUser, login, saveSession } from './api';
 import Login from './pages/Login.jsx';
@@ -55,23 +55,21 @@ function App() {
   if (!user) return <Login onLogin={handleLogin} />;
 
   return (
-    <>
-      <Header
-        selectedPoolId={selectedPoolId}
-        pools={pools}
-        user={user}
-        onPoolChange={setSelectedPoolId}
-        onLogout={handleLogout}
-      />
-      {error && <p className="api-error" role="alert">{error}</p>}
-      <DashboardPage
-        dashboard={dashboard}
-        selectedPoolId={selectedPoolId}
-        user={user}
-        onClaimSubmitted={refreshDashboard}
-        onClaimReviewed={refreshDashboard}
-      />
-    </>
+    <div className="app-shell">
+      <Sidebar user={user} onLogout={handleLogout} />
+      <main className="workspace">
+        {error && <p className="api-error" role="alert">{error}</p>}
+        <DashboardPage
+          dashboard={dashboard}
+          selectedPoolId={selectedPoolId}
+          pools={pools}
+          user={user}
+          onPoolChange={setSelectedPoolId}
+          onClaimSubmitted={refreshDashboard}
+          onClaimReviewed={refreshDashboard}
+        />
+      </main>
+    </div>
   );
 }
 

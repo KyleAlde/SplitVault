@@ -1,6 +1,25 @@
 # SplitVault
 
-SplitVault is a React/Vite dashboard backed by an Express API and PostgreSQL through Prisma.
+SplitVault is a shared-expense and budget operations platform for organizations. It combines a React/Vite frontend with an Express API and PostgreSQL data layer managed through Prisma.
+
+The application provides a modern dark fintech SaaS dashboard for monitoring shared budget pools, reviewing expense claims, and tracking spending by category.
+
+## Key features
+
+- **Multi-role authentication:** JWT-based authentication for Admin and Contributor users.
+- **Shared Budget Pool Management:** Create and manage pools, categories, budgets, and pool membership.
+- **Visual Expense Analytics:** Dashboard metrics and category-level donut chart breakdowns for budget allocation and spending.
+- **Claim Verification Workflow:** Contributors submit expense claims and Admins approve or reject pending claims.
+- **Modern Dark Fintech SaaS Dashboard UI:** Responsive app-shell layout with sidebar navigation, pool selection, claim forms, status badges, and financial widgets.
+
+## Tech stack
+
+- **Frontend:** React 19, Vite, custom CSS, and Orbitron typography.
+- **Backend:** Node.js, Express 5, JWT authentication, bcrypt password hashing, and CORS.
+- **Database:** PostgreSQL accessed through Prisma 7 and the PostgreSQL adapter.
+- **Testing:** Node's built-in test runner and Supertest.
+
+The repository is organized into separate `client` and `server` applications. The frontend communicates with the backend through the `/api` routes described below.
 
 ## Setup
 
@@ -68,6 +87,35 @@ npm run dev
 
 The frontend uses `VITE_API_URL` when provided; otherwise it calls `http://localhost:5000/api`.
 
+## Development workflow
+
+Run the backend and frontend in separate terminals during development:
+
+```powershell
+# Terminal 1
+cd server
+npm run dev
+
+# Terminal 2
+cd client
+npm run dev
+```
+
+For a production frontend build:
+
+```powershell
+cd client
+npm run lint
+npm run build
+```
+
+The server does not currently define separate `lint` or `build` scripts. Its available validation command is:
+
+```powershell
+cd server
+npm test
+```
+
 ## API overview
 
 - `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/me`
@@ -77,7 +125,7 @@ The frontend uses `VITE_API_URL` when provided; otherwise it calls `http://local
 - `POST /api/claims/:claimId/approve`, `POST /api/claims/:claimId/reject`
 - `GET /api/pools/:poolId/dashboard`
 
-Protected endpoints require `Authorization: Bearer <token>`. Receipts currently store local/development file metadata (`filePath`, optional `fileName`, and `mimeType`) rather than uploading files.
+Protected endpoints require a bearer JWT in the `Authorization` header. Receipts currently store local/development file metadata (`filePath`, optional `fileName`, and `mimeType`) rather than uploading files.
 
 ## Testing
 

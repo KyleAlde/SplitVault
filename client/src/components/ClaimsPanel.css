@@ -1,10 +1,10 @@
 .claims-panel {
     width: 100%;
     box-sizing: border-box;
-    padding: 24px;
-    background-color: var(--bg);
+    padding: 22px;
+    background: linear-gradient(180deg, rgba(19, 27, 46, 0.96), rgba(12, 17, 29, 0.98));
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
 }
 
@@ -21,18 +21,19 @@
 }
 
 .claims-panel-header p {
-    font-size: 13px;
+    font-size: 0.78rem;
     color: var(--text);
 }
 
 .claims-count {
     flex-shrink: 0;
-    padding: 4px 10px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    color: var(--text);
-    font-size: 12px;
-    font-weight: 600;
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-pill);
+    color: var(--text-strong);
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .claims-list {
@@ -43,9 +44,16 @@
 .claim-card {
     min-width: 0;
     padding: 16px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background-color: var(--code-bg);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+    transition: all 0.2s ease;
+}
+
+.claim-card:hover {
+    border-color: rgba(91, 140, 255, 0.2);
+    background: rgba(255, 255, 255, 0.03);
+    transform: translateY(-1px);
 }
 
 .claim-card-header,
@@ -75,7 +83,7 @@
 .claim-title-group h3 {
     margin: 0;
     color: var(--text-h);
-    font-size: 16px;
+    font-size: 1rem;
     overflow-wrap: anywhere;
 }
 
@@ -87,7 +95,7 @@
 
 .claim-title-group > span {
     color: var(--text);
-    font-size: 13px;
+    font-size: 0.77rem;
 }
 
 .claim-summary {
@@ -98,30 +106,41 @@
 
 .claim-summary strong {
     color: var(--text-h);
-    font-size: 16px;
+    font-size: 1rem;
+    letter-spacing: -0.03em;
 }
 
 .claim-status {
-    padding: 3px 9px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 0.67rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 .claim-status-pending {
-    color: #92400e;
-    background-color: #fef3c7;
+    color: #fcd34d;
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.24);
+    box-shadow: inset 0 0 14px rgba(251, 191, 36, 0.08);
 }
 
 .claim-status-approved {
-    color: #065f46;
-    background-color: #d1fae5;
+    color: #6ee7b7;
+    background: rgba(45, 212, 191, 0.1);
+    border: 1px solid rgba(45, 212, 191, 0.22);
+    box-shadow: inset 0 0 14px rgba(45, 212, 191, 0.08);
 }
 
 .claim-status-rejected {
-    color: #991b1b;
-    background-color: #fee2e2;
+    color: #fca5a5;
+    background: rgba(248, 113, 113, 0.08);
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    box-shadow: inset 0 0 14px rgba(248, 113, 113, 0.06);
 }
 
 .claim-details {
@@ -129,21 +148,21 @@
     grid-template-columns: minmax(130px, 0.8fr) minmax(130px, 0.8fr) minmax(180px, 1.4fr);
     margin-top: 16px;
     padding-top: 14px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .claim-details > div,
 .claim-receipt {
     gap: 3px;
     color: var(--text-h);
-    font-size: 13px;
+    font-size: 0.78rem;
 }
 
 .claim-detail-label {
     color: var(--text);
-    font-size: 11px;
+    font-size: 0.67rem;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
@@ -151,7 +170,7 @@
     align-items: baseline;
     margin-top: 14px;
     padding-top: 12px;
-    border-top: 1px dashed var(--border);
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
 }
 
 .claim-review-actions {
@@ -160,31 +179,35 @@
     gap: 8px;
     margin-top: 16px;
     padding-top: 14px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .claim-review-button {
-    padding: 8px 14px;
+    padding: 9px 14px;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: 10px;
     color: #fff;
     font: inherit;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 0.78rem;
+    font-weight: 700;
     cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.claim-review-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
+.claim-review-button:hover:not(:disabled) {
+    transform: translateY(-1px);
 }
 
 .claim-approve-button {
-    background-color: var(--accent);
+    background: linear-gradient(135deg, #5b8cff, #3b82f6);
+    box-shadow: 0 10px 18px rgba(59, 130, 246, 0.22);
 }
 
 .claim-reject-button {
-    background-color: var(--danger);
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(248, 113, 113, 0.28);
+    color: #fca5a5;
+    box-shadow: inset 0 0 14px rgba(248, 113, 113, 0.05);
 }
 
 .claims-message {
@@ -194,7 +217,7 @@
 }
 
 .claims-message-error {
-    color: var(--danger);
+    color: #fca5a5;
 }
 
 .claims-message-success {
@@ -206,6 +229,69 @@
 .claims-message-error {
     padding: 0 0 16px;
     text-align: left;
+}
+
+.reject-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.68);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 20px;
+}
+
+.reject-modal {
+    width: min(420px, 100%);
+    background: rgba(11, 15, 23, 0.98);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+.reject-modal-header {
+    margin-bottom: 12px;
+}
+
+.reject-modal-header h3 {
+    font-size: 1.12rem;
+    margin-bottom: 6px;
+}
+
+.reject-modal-header p {
+    color: var(--text);
+    font-size: 0.82rem;
+}
+
+.reject-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.reject-modal-cancel,
+.reject-modal-confirm {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reject-modal-cancel {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-strong);
+}
+
+.reject-modal-confirm {
+    background: linear-gradient(135deg, #f87171, #ef4444);
+    border-color: rgba(248, 113, 113, 0.5);
+    color: #fff;
 }
 
 @media (max-width: 680px) {

@@ -23,8 +23,10 @@ export default function Login({ onLogin }) {
     return (
         <div className="login-page">
             <div className="login-card">
-                <h1>SPLITVAULT</h1>
-                <p className="login-subtitle">Sign in to your account</p>
+                <div className="login-brand">
+                    <span className="login-brand-mark">SPLITVAULT</span>
+                </div>
+                <p className="login-subtitle">Secure access to budget oversight</p>
 
                 <form onSubmit={handleLogin}>
                     <div className="input-group">
@@ -48,7 +50,7 @@ export default function Login({ onLogin }) {
                     </div>
 
                     {error && (
-                        <p className="login-error">{error}</p>
+                        <p className="login-error" role="alert">{error}</p>
                     )}
 
                     <button type="submit" className="login-button" disabled={busy}>
@@ -59,10 +61,10 @@ export default function Login({ onLogin }) {
                         type="button"
                         className="register-button"
                         onClick={() => {}}
+                        aria-label="Register account"
                     >
                         Register
                     </button>
-
                 </form>
             </div>
         </div>

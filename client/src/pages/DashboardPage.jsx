@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import './DashboardPage.css';
+import Header from '../common/Header';
 import MetricsGrid from '../components/MetricsGrid';
 import DonutChart from '../components/DonutChart';
 import ClaimsPanel from '../components/ClaimsPanel';
 import ClaimForm from '../components/ClaimForm';
 
-export default function DashboardPage({ dashboard, selectedPoolId, user, onClaimSubmitted, onClaimReviewed }) {
+export default function DashboardPage({ dashboard, selectedPoolId, pools, user, onPoolChange, onClaimSubmitted, onClaimReviewed }) {
     const [isClaimFormOpen, setIsClaimFormOpen] = useState(false);
     const [claimsRefreshToken, setClaimsRefreshToken] = useState(0);
     const pool = dashboard && {
@@ -22,11 +23,19 @@ export default function DashboardPage({ dashboard, selectedPoolId, user, onClaim
     return (
         <div className="dashboard-layout">
             <div className="main-pane">
+                <Header
+                    selectedPoolId={selectedPoolId}
+                    pools={pools}
+                    onPoolChange={onPoolChange}
+                    onNewClaim={() => setIsClaimFormOpen(true)}
+                />
                 {!isClaimFormOpen && (
-                    <div className="dashboard-actions">
-                        <button className="new-claim-button" type="button" onClick={() => setIsClaimFormOpen(true)}>
-                            + New Claim
-                        </button>
+                    <div className="dashboard-welcome">
+                        <div>
+                            <span className="dashboard-eyebrow">Financial operations</span>
+                            <h1>Dashboard overview</h1>
+                            <p>Monitor your pool performance and manage expense claims.</p>
+                        </div>
                     </div>
                 )}
                 {isClaimFormOpen && (
@@ -46,7 +55,6 @@ export default function DashboardPage({ dashboard, selectedPoolId, user, onClaim
                     onClaimReviewed={onClaimReviewed}
                 />
             </div>
-            <div className="action-center-sidebar" />
         </div>
     );
 }

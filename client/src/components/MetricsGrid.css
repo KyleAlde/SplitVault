@@ -1,49 +1,72 @@
 .metrics-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
     width: 100%;
-    padding: 20px 0px;
+    padding: 8px 0 0;
 }
 
 .metric-card {
-    background-color: var(--bg);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(19, 27, 46, 0.96), rgba(12, 17, 29, 0.98));
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: var(--radius-lg);
+    padding: 18px 18px 16px;
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     gap: 12px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    min-height: 154px;
+    transition: all 0.2s ease;
+}
+
+.metric-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(91, 140, 255, 0.8), transparent 60%);
+    opacity: 0.5;
 }
 
 .metric-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 20px -4px rgba(0, 0, 0, 0.08);
+    border-color: rgba(91, 140, 255, 0.28);
+    box-shadow: 0 18px 35px rgba(15, 23, 42, 0.35);
+}
+
+.metric-card-accent {
+    background: linear-gradient(180deg, rgba(16, 30, 36, 0.98), rgba(10, 14, 23, 0.99));
+    border-color: rgba(45, 212, 191, 0.28);
+}
+
+.metric-card-accent::before {
+    background: linear-gradient(90deg, rgba(45, 212, 191, 0.9), transparent 65%);
 }
 
 .metric-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-
 }
 
 .metric-label {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 0.72rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.08em;
     color: var(--text);
 }
 
 .metric-value {
-    font-size: 26px;
-    font-weight: 700;
+    font-size: clamp(1.9rem, 2vw, 2.5rem);
+    font-weight: 800;
+    line-height: 1.08;
     color: var(--text-h);
-    letter-spacing: -0.5px;
+    letter-spacing: -0.06em;
 }
 
 .metric-value.accent {
@@ -54,28 +77,27 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: 0.72rem;
     color: var(--text);
 }
 
 .metric-subtext {
-    opacity: 0.85;
+    opacity: 0.9;
 }
 
 .metric-badge {
-    background-color: var(--accent-bg);
+    background: var(--accent-bg);
     color: var(--accent);
     border: 1px solid var(--accent-border);
-    font-size: 11px;
+    font-size: 0.68rem;
     font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 12px;
+    padding: 4px 8px;
+    border-radius: var(--radius-pill);
 }
 
-/* Responsive grid rules */
 @media (max-width: 900px) {
     .metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 

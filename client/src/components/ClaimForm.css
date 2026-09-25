@@ -1,8 +1,8 @@
 .claim-form-card {
-    padding: 24px;
-    background: var(--bg);
+    padding: 22px;
+    background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(15, 23, 42, 0.97));
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
 }
 
@@ -15,7 +15,7 @@
 }
 
 .claim-form-header {
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 
 .claim-form-header h2 {
@@ -24,15 +24,15 @@
 
 .claim-form-header p {
     color: var(--text);
-    font-size: 13px;
+    font-size: 0.78rem;
 }
 
 .claim-form-close {
     padding: 8px 12px;
     border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    background: transparent;
+    border-radius: var(--radius-md);
+    color: var(--text-strong);
+    background: rgba(148, 163, 184, 0.04);
     cursor: pointer;
 }
 
@@ -40,12 +40,12 @@
     display: grid;
     gap: 3px;
     margin-bottom: 18px;
-    padding: 12px;
+    padding: 12px 14px;
     border: 1px solid var(--accent-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     color: var(--text);
-    background: var(--accent-bg);
-    font-size: 13px;
+    background: rgba(45, 212, 191, 0.08);
+    font-size: 0.8rem;
 }
 
 .receipt-notice strong {
@@ -59,10 +59,10 @@
 
 .claim-form label {
     display: grid;
-    gap: 6px;
+    gap: 7px;
     color: var(--text-h);
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 700;
 }
 
 .claim-form input,
@@ -70,24 +70,26 @@
 .claim-form select {
     box-sizing: border-box;
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    padding: 11px 12px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 10px;
     color: var(--text-h);
-    background: var(--bg);
+    background: rgba(15, 23, 42, 0.7);
     font: inherit;
-    font-size: 14px;
+    font-size: 0.92rem;
 }
 
 .claim-form textarea {
     resize: vertical;
+    min-height: 86px;
 }
 
 .claim-form input:focus,
 .claim-form textarea:focus,
 .claim-form select:focus {
-    outline: 2px solid var(--primary);
-    outline-offset: 1px;
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 141, 247, 0.18);
 }
 
 .claim-form-grid {
@@ -98,21 +100,21 @@
 
 .field-error,
 .claim-form-error {
-    color: var(--danger);
-    font-size: 12px;
-    font-weight: 500;
+    color: #fca5a5;
+    font-size: 0.72rem;
+    font-weight: 600;
 }
 
 .claim-form-success {
     margin-bottom: 16px;
-    color: var(--accent-hover);
-    font-size: 13px;
-    font-weight: 600;
+    color: #6ee7b7;
+    font-size: 0.8rem;
+    font-weight: 700;
 }
 
 .optional-label {
     color: var(--text);
-    font-weight: 400;
+    font-weight: 500;
 }
 
 .claim-form-actions {
@@ -121,19 +123,20 @@
 }
 
 .claim-submit-button {
-    padding: 10px 18px;
+    padding: 11px 18px;
     border: 0;
-    border-radius: 6px;
+    border-radius: 10px;
     color: #fff;
-    background: var(--primary);
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     cursor: pointer;
     font: inherit;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 0.9rem;
+    font-weight: 700;
+    box-shadow: 0 12px 24px rgba(59, 130, 246, 0.22);
 }
 
 .claim-submit-button:hover:not(:disabled) {
-    background: var(--primary-hover);
+    background: linear-gradient(135deg, var(--primary-hover), #2d5fd1);
 }
 
 .claim-submit-button:disabled,

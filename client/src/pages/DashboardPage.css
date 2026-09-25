@@ -1,59 +1,44 @@
 .dashboard-layout {
     width: 100%;
     box-sizing: border-box;
-    max-width: 1350px;
-    margin: 0 auto;
-    padding: 20px;
-    gap: 24px;
-
-    display: flex;
-    align-items: flex-start;
+    padding: 26px clamp(20px, 4vw, 48px) 42px;
 }
 
 .main-pane {
-    flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 22px;
 }
 
-.dashboard-actions {
+.dashboard-welcome {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 4px 0 6px;
 }
 
-.new-claim-button {
-    padding: 10px 16px;
-    border: 0;
-    border-radius: 6px;
-    color: #fff;
-    background: var(--primary);
-    cursor: pointer;
-    font: inherit;
-    font-size: 14px;
-    font-weight: 600;
+.dashboard-eyebrow {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--accent);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
 }
 
-.new-claim-button:hover {
-    background: var(--primary-hover);
+.dashboard-welcome h1 {
+    margin-bottom: 7px;
+    font-size: clamp(1.7rem, 3vw, 2.35rem);
+    letter-spacing: -0.045em;
 }
 
-.action-center-sidebar {
-    width: 340px;
-    flex-shrink: 0;
-    position: sticky;
-    top: 96px;
+.dashboard-welcome p {
+    color: var(--text);
+    font-size: 0.86rem;
 }
 
-/* Stack vertically on tablets and mobile */
-@media (max-width: 960px) {
-    .dashboard-layout {
-        flex-direction: column;
-    }
-
-    .action-center-sidebar {
-        width: 100%;
-        position: static;
-    }
+.claim-form-card {
+    margin-top: 2px;
 }

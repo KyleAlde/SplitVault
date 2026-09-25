@@ -27,6 +27,7 @@ export default function ClaimsPanel({ poolId, user, refreshToken = 0, onClaimRev
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [reviewingClaimId, setReviewingClaimId] = useState('');
+    const [rejectingClaim, setRejectingClaim] = useState(null);
     const [feedback, setFeedback] = useState(null);
 
     const loadClaims = useCallback(async () => {
@@ -71,7 +72,6 @@ export default function ClaimsPanel({ poolId, user, refreshToken = 0, onClaimRev
 
     async function reviewClaim(claim, action) {
         if (reviewingClaimId) return;
-        if (action === 'reject' && !window.confirm(`Reject "${claim.title}"?`)) return;
 
         setReviewingClaimId(claim.id);
         setFeedback(null);
@@ -92,6 +92,7 @@ export default function ClaimsPanel({ poolId, user, refreshToken = 0, onClaimRev
             setFeedback({ type: 'error', message: requestError.message });
         } finally {
             setReviewingClaimId('');
+            setRejectingClaim(null);
         }
     }
 
@@ -165,7 +166,7 @@ export default function ClaimsPanel({ poolId, user, refreshToken = 0, onClaimRev
                                         className="claim-review-button claim-reject-button"
                                         type="button"
                                         disabled={reviewingClaimId !== '' || loading}
-                                        onClick={() => reviewClaim(claim, 'reject')}
+                                        onClick={() => setRejectingClaim(claim)}
                                     >
                                         Reject
                                     </button>
@@ -173,6 +174,29 @@ export default function ClaimsPanel({ poolId, user, refreshToken = 0, onClaimRev
                             )}
                         </article>
                     ))}
+                </div>
+            )}
+
+            {rejectingClaim && (
+                <div className="reject-modal-backdrop" onClick={() => setRejectingClaim(null)}>
+                    <div className="reject-modal" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title" onClick={(event) => event.stopPropagation()}>
+                        <div className="reject-modal-header">
+                            <h3 id="reject-modal-title">Reject claim</h3>
+                            <p>Are you sure you want to reject “{rejectingClaim.title}”? This action cannot be undone from this screen.</p>
+                        </div>
+                        <div className="reject-modal-actions">
+                            <button type="button" className="reject-modal-cancel" onClick={() => setRejectingClaim(null)}>
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="reject-modal-confirm"
+                                onClick={() => reviewClaim(rejectingClaim, 'reject')}
+                            >
+                                Confirm reject
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </section>

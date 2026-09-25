@@ -1,75 +1,103 @@
 .floating-header {
-    position: sticky;
-    top: 16px;
-    z-index: 100;
-    
-    width: calc(100% - 32px);
-    max-width: 1350px;
-    margin: 0 auto;
-    height: 64px;
-    padding: 0 25px;
+    width: 100%;
+    min-height: 72px;
+    padding: 0 0 22px;
     box-sizing: border-box;
-
-    background-color: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    
-    border: 0.3px solid var(--border);
-    border-radius: 50px;
-    box-shadow: var(--shadow);
-
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-/* Left Section */
 .header-left {
     display: flex;
     align-items: center;
     gap: 20px;
 }
 
-.brand {
+.breadcrumb {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-weight: 700;
+    gap: 9px;
+    min-width: 0;
+    color: var(--text);
+    font-size: 0.78rem;
+}
+
+.breadcrumb strong {
     color: var(--text-h);
+    font-weight: 700;
 }
 
-.brand-badge {
-    background-color: var(--primary);
-    color: #ffffff;
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 6px;
+.breadcrumb-current {
+    overflow: hidden;
+    max-width: 220px;
+    color: var(--text-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.brand-name {
-    font-family: 'Orbitron', var(--sans);
-    font-size: 20px;
-    font-weight: 900;
-    letter-spacing: 5.5px;
-    color: #64748B;
+.breadcrumb-separator {
+    color: rgba(148, 163, 184, 0.5);
+}
+
+.pool-selector-wrapper {
+    display: flex;
+    align-items: center;
 }
 
 .pool-selector {
-    background-color: var(--code-bg);
+    appearance: none;
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 14px;
-    color: var(--text-h);
+    border-radius: var(--radius-md);
+    padding: 9px 34px 9px 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-strong);
     cursor: pointer;
     outline: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text) 50%), linear-gradient(135deg, var(--text) 50%, transparent 50%);
+    background-position: calc(100% - 17px) calc(50% - 2px), calc(100% - 11px) calc(50% - 2px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    transition: all 0.2s ease;
 }
 
-/* Right Section */
+.pool-selector:hover,
+.pool-selector:focus-visible {
+    border-color: rgba(255, 255, 255, 0.12);
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.pool-selector:focus-visible {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.28);
+}
+
 .header-right {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 10px;
+}
+
+.header-new-claim-button {
+    padding: 10px 15px;
+    border: 1px solid rgba(91, 140, 255, 0.32);
+    border-radius: var(--radius-md);
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary), #4f46e5);
+    box-shadow: 0 10px 22px rgba(91, 140, 255, 0.17);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.header-new-claim-button span {
+    margin-right: 4px;
+    font-size: 1rem;
+}
+
+.header-new-claim-button:hover {
+    background: linear-gradient(135deg, var(--primary-hover), var(--primary));
 }
 
 .icon-btn {
@@ -77,118 +105,71 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
-    border: none;
-    padding: 4px; /* Small click target padding without visible box */
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
     margin: 0;
     cursor: pointer;
     outline: none;
-    border-radius: 6px;
-    transition: transform 0.15s ease, opacity 0.15s ease;
+    transition: all 0.2s ease;
 }
 
-/* Subtle hover interaction on the icon itself */
 .icon-btn:hover {
-    transform: scale(1.1);
-    opacity: 0.8;
+    transform: none;
+    background: rgba(91, 140, 255, 0.08);
+    border-color: rgba(91, 140, 255, 0.2);
 }
 
-/* Accessible focus ring for keyboard navigation */
 .icon-btn:focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.28);
 }
 
-/* Icon image dimensions */
 .nav-icon-img {
-    width: 22px; /* Increased slightly now that container padding is gone */
-    height: 22px;
+    width: 18px;
+    height: 18px;
     display: block;
     object-fit: contain;
+    filter: brightness(1.2);
 }
 
-/* Notification dot positioned relative to the icon boundary */
 .notification-dot {
     position: absolute;
-    top: 2px;
-    right: 2px;
+    top: 3px;
+    right: 3px;
     width: 8px;
     height: 8px;
     background-color: var(--danger);
     border-radius: 50%;
-    border: 2px solid var(--bg);
+    border: 2px solid rgba(10, 14, 23, 1);
 }
 
-.avatar-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background-color: var(--primary);
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 700;
-    border: 2px solid var(--bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background-color 0.15s ease;
-}
+@media (max-width: 740px) {
+    .floating-header {
+        width: 100%;
+        padding: 0 0 18px;
+        min-height: auto;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        border-radius: 0;
+    }
 
-.avatar-btn:hover {
-    background-color: var(--primary-hover);
-}
+    .header-left,
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
 
-.account-menu-wrapper {
-    position: relative;
-}
+    .breadcrumb {
+        width: 100%;
+    }
 
-.account-menu {
-    position: absolute;
-    top: calc(100% + 10px);
-    right: 0;
-    z-index: 110;
-    width: 220px;
-    padding: 8px;
-    background-color: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-}
+    .pool-selector {
+        min-width: 0;
+    }
 
-.account-menu-user {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 8px 10px 10px;
-    color: var(--text-h);
-    overflow-wrap: anywhere;
-}
-
-.account-menu-user strong {
-    font-size: 14px;
-}
-
-.account-menu-user span {
-    font-size: 12px;
-    color: var(--text);
-}
-
-.logout-btn {
-    width: 100%;
-    padding: 9px 10px;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--danger);
-    font: inherit;
-    font-size: 14px;
-    text-align: left;
-    cursor: pointer;
-}
-
-.logout-btn:hover,
-.logout-btn:focus-visible {
-    background-color: var(--primary-light);
-    outline: none;
+    .header-new-claim-button {
+        padding-inline: 11px;
+    }
 }
