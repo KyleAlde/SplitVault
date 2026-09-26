@@ -1,8 +1,10 @@
 import { currentUser, budgetPools } from '../tempData';
 import notifButton from '../assets/notif_button.svg';
 import './Header.css';
+import { useState } from 'react';
 
-export default function Header({ selectedPoolId, onPoolChange }) {
+export default function Header({ selectedPoolId, onPoolChange, onLogout }) {
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
     return (
         <header className="floating-header">
             <div className="header-left">
@@ -34,13 +36,24 @@ export default function Header({ selectedPoolId, onPoolChange }) {
                 </button>
 
                 {/* User initials avatar with hover tooltip for name & role */}
-                <button 
-                    className="avatar-btn" 
-                    title={`${currentUser.name} (${currentUser.role})`}
-                    aria-label="Account options"
-                >
-                    {currentUser.initials}
-                </button>
+                <div className ="profile-container">
+                    <button
+                        className="avatar-btn"
+                        title={`${currentUser.name} (${currentUser.role})`}
+                        aria-label="Account Options"
+                        onClick={() => setShowProfileMenu(!showProfileMenu)}
+                        >
+                            {currentUser.initials}
+                        </button>
+
+                        {showProfileMenu && (
+                            <div className="profile-menu">
+                                <button>Profile</button>
+                                <button>Settings</button>
+                                <button onClick={onLogout}>Logout</button>
+                            </div>
+                        )}
+                </div>
             </div>
         </header>
     )
