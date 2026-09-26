@@ -1,13 +1,136 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  CONTRIBUTOR
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AuditAction {
+  POOL_CREATED
+  POOL_UPDATED
+  CATEGORY_CREATED
+  CLAIM_SUBMITTED
+  CLAIM_APPROVED
+  CLAIM_REJECTED
+}
+
+model User {
+  id           String             @id @default(uuid()) @db.Uuid
+  name         String
+  email        String             @unique
+  passwordHash String
+  role         Role               @default(CONTRIBUTOR)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  memberships  BudgetPoolMember[]
+  claims       ExpenseClaim[]     @relation("Claimant")
+  reviewed     ExpenseClaim[]     @relation("Reviewer")
+  auditLogs    AuditLog[]
+
+  @@index([role])
+}
+
+model BudgetPool {
+  id          String             @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  totalBudget Decimal            @db.Decimal(12, 2)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  members     BudgetPoolMember[]
+  categories  Category[]
+  claims      ExpenseClaim[]
+  auditLogs   AuditLog[]
+
+  @@index([createdAt])
+}
+
+model BudgetPoolMember {
+  poolId   String     @db.Uuid
+  userId   String     @db.Uuid
+  role     Role       @default(CONTRIBUTOR)
+  joinedAt DateTime   @default(now())
+  pool     BudgetPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([poolId, userId])
+  @@index([userId])
+}
+
+model Category {
+  id        String         @id @default(uuid()) @db.Uuid
+  poolId    String         @db.Uuid
+  name      String
+  budget    Decimal        @db.Decimal(12, 2)
+  color     String         @default("#425b9a")
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  pool      BudgetPool     @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  claims    ExpenseClaim[]
+
+  @@unique([poolId, name])
+  @@index([poolId])
+}
+
+model ExpenseClaim {
+  id          String       @id @default(uuid()) @db.Uuid
+  poolId      String       @db.Uuid
+  categoryId  String       @db.Uuid
+  claimantId  String       @db.Uuid
+  reviewerId  String?      @db.Uuid
+  title       String
+  description String?
+  amount      Decimal      @db.Decimal(12, 2)
+  incurredAt  DateTime
+  status      ClaimStatus  @default(PENDING)
+  reviewNote  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  approvedAt  DateTime?
+  pool        BudgetPool   @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  category    Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  claimant    User         @relation("Claimant", fields: [claimantId], references: [id], onDelete: Restrict)
+  reviewer    User?        @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  receipt     Receipt?
+
+  @@index([poolId, status])
+  @@index([claimantId])
+  @@index([categoryId])
+}
+
+model Receipt {
+  id        String       @id @default(uuid()) @db.Uuid
+  claimId   String       @unique @db.Uuid
+  filePath  String
+  fileName  String?
+  mimeType  String?
+  createdAt DateTime     @default(now())
+  claim     ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String      @id @default(uuid()) @db.Uuid
+  action    AuditAction
+  userId    String      @db.Uuid
+  poolId    String?     @db.Uuid
+  claimId   String?     @db.Uuid
+  details   Json?
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  pool      BudgetPool? @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@index([poolId, createdAt])
+  @@index([userId, createdAt])
 }
