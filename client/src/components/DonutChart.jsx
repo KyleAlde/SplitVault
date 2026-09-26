@@ -1,128 +1,96 @@
 import React from 'react';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import './DonutChart.css';
 
-export default function DonutChart({ pool }) {
-	if (!pool || !pool.categories || pool.categories.length === 0) return null;
-
-	const totalBudget = pool.totalBudget || 0;
-	const totalSpent = pool.totalSpent || 0;
+export default function DonutChart({ categories = [], totalBudget = 0, totalSpent = 0 }) {
 	const remainingBalance = Math.max(0, totalBudget - totalSpent);
 
-	// Max value for total calculation (handles over-budget scenarios cleanly)
-	const chartTotal = Math.max(totalBudget, totalSpent);
-
-	const formatCurrency = (val) =>
-		new Intl.NumberFormat('en-PH', {
-			style: 'currency',
-			currency: 'PHP',
-			maximumFractionDigits: 2,
-		}).format(val);
-
-	const radius = 60;
-	const strokeWidth = 18;
-	const circumference = 2 * Math.PI * radius;
-
-	let accumulatedPercent = 0;
-
-	// Build array of all chart slices (spent categories + remaining balance)
-	const slices = [
-		...pool.categories.map((cat) => ({
-			name: cat.name,
-			amount: cat.spent,
-			color: cat.color,
-			isRemaining: false,
-		})),
+	const chartData = [
+		...categories.map((cat) => {
+			const val = Number(cat.spent || cat.amount || 0); 
+			return {
+				name: cat.name || 'Unknown',
+				value: val,
+				color: cat.color || '#cbd5e1',
+				percentage: totalBudget > 0 ? Math.round((val / totalBudget) * 100) : 0,
+				isRemaining: false
+			};
+		}),
+		{ 
+			name: 'Remaining Balance', 
+			value: remainingBalance, 
+			color: '#e2e8f0', 
+			percentage: totalBudget > 0 ? Math.round((remainingBalance / totalBudget) * 100) : 0,
+			isRemaining: true 
+		},
 	];
 
-	// Append Remaining Balance segment as light grey if balance exists
-	if (remainingBalance > 0) {
-		slices.push({
-			name: 'Remaining Balance',
-			amount: remainingBalance,
-			color: 'var(--border)',
-			isRemaining: true,
-		});
-	}
+	const percentRemaining = totalBudget > 0 
+		? Math.round((remainingBalance / totalBudget) * 100) 
+		: 0;
 
 	return (
-		<section className="donut-card" aria-label="Category Expenditure Breakdown">
-			<div className="donut-card-header">
+		<div className="donut-card">
+			<div className="card-header">
 				<h3>Category & Budget Breakdown</h3>
-				<span className="donut-card-sub">Active Pool Allocation & Disbursements</span>
+				<span className="sub-text">Active Pool Allocation & Disbursements</span>
 			</div>
 
-			<div className="donut-card-body">
-				{/* Donut Chart SVG */}
-				<div className="donut-chart-container">
-					<svg className="donut-svg" viewBox="0 0 160 160">
-						{/* Background Track */}
-						<circle
-							cx="80"
-							cy="80"
-							r={radius}
-							fill="transparent"
-							stroke="var(--border)"
-							strokeWidth={strokeWidth}
+			<div className="chart-body">
+				<div className="chart-container">
+					<PieChart width={220} height={220}>
+						<Pie
+							data={chartData}
+							cx="50%"
+							cy="50%"
+							innerRadius={65}
+							outerRadius={85}
+							paddingAngle={3}
+							startAngle={90}
+							endAngle={-270}
+							dataKey="value"
+						>
+							{chartData.map((entry, index) => (
+								<Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+							))}
+						</Pie>
+						<Tooltip
+							formatter={(value) => `₱${Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
+							contentStyle={{
+								backgroundColor: 'var(--code-bg, #1e293b)',
+								borderColor: 'var(--border, #334155)',
+								borderRadius: '8px',
+								color: 'var(--text-h, #ffffff)',
+								fontSize: '12px',
+							}}
 						/>
+					</PieChart>
 
-						{/* Dynamic Category & Remaining Slices */}
-						{chartTotal > 0 &&
-							slices.map((slice) => {
-								if (slice.amount <= 0) return null;
-								const percent = slice.amount / chartTotal;
-								const strokeDasharray = `${percent * circumference} ${circumference}`;
-								const strokeDashoffset = -accumulatedPercent * circumference;
-								accumulatedPercent += percent;
-
-								return (
-									<circle
-										key={slice.name}
-										cx="80"
-										cy="80"
-										r={radius}
-										fill="transparent"
-										stroke={slice.color}
-										strokeWidth={strokeWidth}
-										strokeDasharray={strokeDasharray}
-										strokeDashoffset={strokeDashoffset}
-										className="donut-segment"
-									/>
-								);
-							})}
-					</svg>
-
-					{/* Center Callout */}
 					<div className="donut-center-info">
-						<span className="donut-center-label">Total Budget</span>
-						<span className="donut-center-value">{formatCurrency(totalBudget)}</span>
+						<span className="donut-percent">{percentRemaining}%</span>
 					</div>
 				</div>
 
-				{/* Legend List */}
-				<div className="donut-legend">
-					{slices.map((slice) => {
-						const percent = chartTotal > 0 ? Math.round((slice.amount / chartTotal) * 100) : 0;
-						return (
-							<div
-								key={slice.name}
-								className={`legend-item ${slice.isRemaining ? 'legend-item-remaining' : ''}`}
-							>
-								<div className="legend-item-left">
-									<span
-										className="legend-color-dot"
-										style={{ backgroundColor: slice.color }}
-									/>
-									<span className="legend-name">{slice.name}</span>
-								</div>
-								<div className="legend-item-right">
-									<span className="legend-amount">{formatCurrency(slice.amount)}</span>
-									<span className="legend-percent">{percent}%</span>
-								</div>
+				<ul className="category-legend">
+					{chartData.map((item, idx) => (
+						<li 
+							key={idx} 
+							className={`legend-item ${item.isRemaining ? 'legend-transparent' : 'legend-filled'}`}
+						>
+							<div className="legend-left">
+								<span className="legend-dot" style={{ backgroundColor: item.color }} />
+								<span className="legend-name">{item.name}</span>
 							</div>
-						);
-					})}
-				</div>
+							<div className="legend-right">
+								<span className="legend-val">
+									₱{Number(item.value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+								</span>
+								<span className="legend-pct">{item.percentage}%</span>
+							</div>
+						</li>
+					))}
+				</ul>
 			</div>
-		</section>
+		</div>
 	);
 }

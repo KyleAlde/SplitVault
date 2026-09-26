@@ -1,0 +1,150 @@
+.action-center-card {
+	display: flex;
+	flex-direction: column;
+	margin: 10px;
+	padding: 16px;
+	background-color: #425B9A;
+	border-radius: 12px;
+	position: sticky;
+	top: 24px;
+	box-sizing: border-box;
+	gap: 16px;
+	width: 280px;
+}
+
+.submit-area {
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
+.btn-submit-white {
+	width: 100%;
+	padding: 12px 16px;
+	background-color: #ffffff;
+	color: #0f172a;
+	border: none;
+	border-radius: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.btn-submit-white:hover {
+	background-color: #f1f5f9;
+}
+
+.btn-submit-white:active {
+	transform: scale(0.99);
+}
+
+.plus-icon {
+	font-size: 16px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.claims-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	flex-grow: 1;
+}
+
+.claims-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 4px;
+}
+
+.claims-title {
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: rgba(255, 255, 255, 0.75);
+}
+
+.claims-count {
+	font-size: 11px;
+	font-weight: 700;
+	background-color: rgba(0, 0, 0, 0.2);
+	color: #ffffff;
+	padding: 2px 8px;
+	border-radius: 10px;
+}
+
+.claims-items-container {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.claim-mini-card {
+	background-color: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 8px;
+	padding: 10px 12px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.claim-mini-card:hover {
+	background-color: rgba(255, 255, 255, 0.14);
+	border-color: rgba(255, 255, 255, 0.25);
+}
+
+.claim-info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	overflow: hidden;
+	padding-right: 8px;
+}
+
+.claim-name {
+	font-size: 13px;
+	font-weight: 500;
+	color: #ffffff;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.claim-date {
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.claim-amount {
+	font-size: 13px;
+	font-weight: 600;
+	color: #ffffff;
+	flex-shrink: 0;
+}
+
+.btn-view-all {
+	background: none;
+	border: none;
+	color: rgba(255, 255, 255, 0.8);
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+	padding: 6px 0;
+	text-align: center;
+	margin-top: 4px;
+	transition: color 0.15s ease;
+}
+
+.btn-view-all:hover {
+	color: #ffffff;
+}

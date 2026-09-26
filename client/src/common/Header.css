@@ -23,7 +23,6 @@
     justify-content: space-between;
 }
 
-/* Left Section */
 .header-left {
     display: flex;
     align-items: center;
@@ -65,7 +64,6 @@
     outline: none;
 }
 
-/* Right Section */
 .header-right {
     display: flex;
     align-items: center;
@@ -79,7 +77,7 @@
     justify-content: center;
     background: transparent;
     border: none;
-    padding: 4px; /* Small click target padding without visible box */
+    padding: 4px;
     margin: 0;
     cursor: pointer;
     outline: none;
@@ -87,27 +85,24 @@
     transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
-/* Subtle hover interaction on the icon itself */
 .icon-btn:hover {
     transform: scale(1.1);
     opacity: 0.8;
 }
 
-/* Accessible focus ring for keyboard navigation */
 .icon-btn:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
 }
 
-/* Icon image dimensions */
+
 .nav-icon-img {
-    width: 22px; /* Increased slightly now that container padding is gone */
+    width: 22px;
     height: 22px;
     display: block;
     object-fit: contain;
 }
 
-/* Notification dot positioned relative to the icon boundary */
 .notification-dot {
     position: absolute;
     top: 2px;

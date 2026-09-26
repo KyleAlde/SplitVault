@@ -33,7 +33,7 @@
   letter-spacing: 0.18px;
   color-scheme: light dark;
   color: var(--text);
-  background: var(--bg-page);
+  /* background: var(--bg-page); */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -42,7 +42,6 @@
   align-items: stretch;
 }
 
-/* Global Reset & Edge-to-Edge Canvas */
 html, body {
   margin: 0;
   padding: 0;
@@ -50,6 +49,12 @@ html, body {
   min-height: 100vh;
   background-color: var(--bg-page);
   display: block;
+
+  background-color: #ffffff;
+	background-image: 
+    url("https://www.transparenttextures.com/patterns/cubes.png"),
+    url("https://www.transparenttextures.com/patterns/cubes.png"),
+    url("https://www.transparenttextures.com/patterns/cubes.png");
 }
 
 #root {
@@ -62,7 +67,7 @@ html, body {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  background-color: var(--bg-page);
+  background-color: transparent;
 }
 
 h1, h2 {
