@@ -55,6 +55,7 @@ html, body {
     url("https://www.transparenttextures.com/patterns/cubes.png"),
     url("https://www.transparenttextures.com/patterns/cubes.png"),
     url("https://www.transparenttextures.com/patterns/cubes.png");
+    background-attachment: fixed;
 }
 
 #root {
