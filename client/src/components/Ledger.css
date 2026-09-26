@@ -1,0 +1,179 @@
+.ledger-card {
+	background-color: var(--bg);
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	padding: 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	text-align: left;
+}
+
+.ledger-card .ledger-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-end;
+	flex-wrap: wrap;
+	gap: 16px;
+	width: 100%;
+}
+
+.ledger-card .header-titles {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.ledger-card .header-titles h3 {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--text-h);
+}
+
+.ledger-card .sub-text {
+	font-size: 12px;
+	color: var(--text);
+}
+
+.ledger-card .ledger-controls {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+}
+
+.ledger-card .ledger-search,
+.ledger-card .ledger-select {
+	background-color: var(--bg);
+	border: 1px solid var(--border);
+	color: var(--text-h);
+	font-size: 13px;
+	padding: 8px 12px;
+	border-radius: 6px;
+	outline: none;
+	transition: border-color 0.15s ease;
+}
+
+.ledger-card .ledger-search {
+	width: 220px;
+}
+
+.ledger-card .ledger-select {
+	min-width: 140px;
+	cursor: pointer;
+}
+
+.ledger-card .ledger-search:focus,
+.ledger-card .ledger-select:focus {
+	border-color: var(--text);
+}
+
+.ledger-card .table-container {
+	width: 100%;
+	overflow-x: auto;
+}
+
+.ledger-card .ledger-table {
+	width: 100%;
+	border-collapse: collapse;
+	text-align: left;
+	font-size: 13px;
+}
+
+.ledger-card .ledger-table th {
+	font-weight: 600;
+	font-size: 10px; 
+	text-transform: uppercase;
+	letter-spacing: 0.8px;
+	color: var(--text);
+	opacity: 0.65;
+	padding: 8px 12px 12px 12px;
+	border-bottom: 1px solid var(--border);
+}
+
+.ledger-card .ledger-table td {
+	padding: 16px 12px;
+	border-bottom: 1px solid var(--border);
+	color: var(--text-h);
+	transition: background-color 0.1s ease;
+}
+
+.ledger-card .ledger-table tr:hover td {
+	background-color: var(--code-bg);
+}
+
+.ledger-card .ledger-table tr:last-child td {
+	border-bottom: none;
+}
+
+.ledger-card .col-title {
+	font-weight: 600;
+}
+
+.ledger-card .col-claimant {
+	color: var(--text);
+}
+
+.ledger-card .category-pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 12px;
+	font-size: 11px;
+	font-weight: 500;
+	background-color: var(--code-bg);
+	border: 1px solid var(--border);
+}
+
+.ledger-card .cat-dot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	margin-right: 6px;
+	flex-shrink: 0;
+}
+
+.ledger-card .text-right {
+	text-align: right !important;
+}
+
+.ledger-card .col-amount {
+	font-weight: 600;
+}
+
+.ledger-card .col-date {
+	color: var(--text);
+	font-size: 12px;
+}
+
+.ledger-card .empty-state {
+	padding: 32px;
+	text-align: center;
+	color: var(--text);
+	font-size: 13px;
+}
+
+.ledger-card .card-footer-centered {
+	display: flex;
+	justify-content: center;
+	padding-top: 8px;
+	width: 100%;
+}
+
+.ledger-card .btn-load-more {
+	background-color: transparent;
+	border: 1px solid var(--border);
+	color: var(--text-h);
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	padding: 8px 18px;
+	border-radius: 8px;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ledger-card .btn-load-more:hover {
+	background-color: var(--code-bg);
+	border-color: var(--text);
+}
