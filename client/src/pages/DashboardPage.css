@@ -25,6 +25,27 @@
     top: 96px;
 }
 
+.dashboard-layout {
+    flex-wrap: wrap;
+}
+
+.dashboard-message,
+.dashboard-error {
+    width: min(calc(100% - 40px), 1310px);
+    margin: 24px auto;
+    padding: 18px 20px;
+    border-radius: 6px;
+    background: #fff;
+    color: #344054;
+}
+
+.dashboard-error {
+    flex: 0 0 100%;
+    box-sizing: border-box;
+    border-left: 4px solid #b42318;
+    color: #b42318;
+}
+
 /* Stack vertically on tablets and mobile */
 @media (max-width: 960px) {
     .dashboard-layout {

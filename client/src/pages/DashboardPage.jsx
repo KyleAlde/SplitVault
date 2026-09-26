@@ -1,25 +1,73 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './DashboardPage.css';
-import { budgetPools } from '../tempData';
 import MetricsGrid from '../components/MetricsGrid';
 import DonutChart from '../components/DonutChart';
 import ActionCenter from '../components/ActionCenter';
 import Ledger from '../components/Ledger';
 import ReviewPendingModal from '../components/modals/ReviewPendingModal';
+import SubmitExpenseModal from '../components/SubmitExpenseModal';
+import { apiRequest } from '../api.js';
 
-export default function DashboardPage({ selectedPoolId }) {
+const STATUS_LABELS = { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected' };
+
+function formatDate(value) {
+    return value ? new Date(value).toLocaleDateString() : '—';
+}
+
+export default function DashboardPage({ token, selectedPoolId, userRole, poolRefreshKey }) {
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
     const [initialClaimId, setInitialClaimId] = useState(null);
+    const [activePool, setActivePool] = useState(null);
+    const [loadError, setLoadError] = useState(null);
+    const [actionError, setActionError] = useState('');
+    const [isUpdatingClaim, setIsUpdatingClaim] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
 
-    const activePool = budgetPools.find((p) => p.id === selectedPoolId) || budgetPools[0];
+    useEffect(() => {
+        if (!selectedPoolId) {
+            return undefined;
+        }
 
-    const pendingClaims = activePool?.claims?.filter((claim) => claim.status === 'Pending') || [];
+        let cancelled = false;
+        Promise.all([
+            apiRequest(`/pools/${selectedPoolId}`, { token }),
+            apiRequest(`/pools/${selectedPoolId}/dashboard`, { token }),
+            apiRequest(`/pools/${selectedPoolId}/claims`, { token }),
+        ]).then(([poolResponse, dashboard, claimsResponse]) => {
+            if (cancelled) return;
+            const categoryBreakdown = new Map(dashboard.categoryBreakdown.map((category) => [category.name, category]));
+            const categories = poolResponse.pool.categories.map((category) => ({
+                ...category,
+                spent: categoryBreakdown.get(category.name)?.spent || 0,
+            }));
+            const claims = claimsResponse.claims.map((claim) => ({
+                ...claim,
+                status: STATUS_LABELS[claim.status] || claim.status,
+                claimant: claim.claimant?.name || 'Unknown user',
+                category: claim.category?.name || 'Uncategorized',
+                date: formatDate(claim.incurredAt),
+                receiptUrl: /^https?:\/\//i.test(claim.receipt?.filePath || '') ? claim.receipt.filePath : null,
+            }));
+            setActivePool({ ...poolResponse.pool, ...dashboard, categories, claims });
+            setLoadError(null);
+        }).catch((error) => {
+            if (!cancelled) setLoadError({
+                poolId: selectedPoolId,
+                message: error.message || 'Unable to load this budget pool.',
+            });
+        });
 
-    const approvedClaims = activePool?.claims?.filter((claim) => claim.status === 'Approved') || [];
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedPoolId, token, reloadKey, poolRefreshKey]);
 
-    const handleSubmitExpense = () => {
-        console.log('Open Submit Expense Modal');
-    };
+    const displayedPool = activePool?.id === selectedPoolId ? activePool : null;
+    const displayedError = loadError?.poolId === selectedPoolId ? loadError.message : '';
+    const isAdmin = userRole === 'ADMIN';
+    const pendingClaims = displayedPool?.claims?.filter((claim) => claim.status === 'Pending') || [];
+    const handleSubmitExpense = () => setIsSubmitModalOpen(true);
 
     const handleReviewAllPending = () => {
         setInitialClaimId(null);
@@ -31,57 +79,79 @@ export default function DashboardPage({ selectedPoolId }) {
         setIsReviewModalOpen(true);
     };
 
-    const handleViewClaimDetail = (claimId) => {
-        console.log('Open Single Claim Detail Modal for ID:', claimId);
+    const handleReview = async (claimId, decision, reviewNote) => {
+        setActionError('');
+        setIsUpdatingClaim(true);
+        try {
+            await apiRequest(`/claims/${claimId}/${decision}`, {
+                token,
+                method: 'POST',
+                body: reviewNote ? { reviewNote } : {},
+            });
+            setReloadKey((key) => key + 1);
+            return true;
+        } catch (error) {
+            setActionError(error.message || 'Unable to update this claim.');
+            return false;
+        } finally {
+            setIsUpdatingClaim(false);
+        }
     };
 
-    const handleViewAllLedger = () => {
-        console.log('Navigate to Full Ledger Page / View');
+    const handleSubmitClaim = async (claim) => {
+        await apiRequest(`/pools/${selectedPoolId}/claims`, {
+            token,
+            method: 'POST',
+            body: claim,
+        });
+        setIsSubmitModalOpen(false);
+        setReloadKey((key) => key + 1);
     };
 
-    const handleApprove = (claimId) => {
-        console.log('Approved claim ID:', claimId);
-        // TODO: Update claim status to Approved in state/backend
-    };
-
-    const handleReject = (claimId, reason) => {
-        console.log('Rejected claim ID:', claimId, 'Reason:', reason);
-        // TODO: Update claim status to Rejected/Revision in state/backend
-    };
+    if (!selectedPoolId) return <div className="dashboard-message">No budget pools are available for this account.</div>;
+    if (!displayedPool && !displayedError) return <div className="dashboard-message">Loading budget pool...</div>;
 
     return (
         <div className="dashboard-layout">
-            <div className="main-pane">
-                <MetricsGrid pool={activePool} />
-                <DonutChart 
-                    categories={activePool?.categories || []} 
-                    totalBudget={activePool?.totalBudget || 0} 
-                    totalSpent={activePool?.totalSpent || 0} 
-                />
-                <Ledger 
-                    claims={activePool?.claims || []} 
-                    categories={activePool?.categories || []} 
-                />
-            </div>
-            <div className="action-center-sidebar">
-                <ActionCenter 
-                    claims={pendingClaims}
-                    onReviewAll={handleReviewAllPending}
-                    onSubmitExpense={handleSubmitExpense}
-                    onReviewClaim={handleReviewSingleClaim}
-                />
-            </div>
+            {(displayedError || actionError) && <div className="dashboard-error" role="alert">{actionError || displayedError}</div>}
+            {displayedPool && <>
+                <div className="main-pane">
+                    <MetricsGrid pool={displayedPool} />
+                    <DonutChart
+                        categories={displayedPool.categories || []}
+                        totalBudget={displayedPool.totalBudget || 0}
+                        totalSpent={displayedPool.totalSpent || 0}
+                    />
+                    <Ledger claims={displayedPool.claims || []} categories={displayedPool.categories || []} />
+                </div>
+                <div className="action-center-sidebar">
+                    <ActionCenter
+                        claims={pendingClaims}
+                        canReview={isAdmin}
+                        onReviewAll={handleReviewAllPending}
+                        onSubmitExpense={handleSubmitExpense}
+                        onReviewClaim={handleReviewSingleClaim}
+                    />
+                </div>
+            </>}
 
-            {/* Split-Pane Review Pending Modal Integration */}
-            <ReviewPendingModal 
+            {isAdmin && isReviewModalOpen && <ReviewPendingModal
                 isOpen={isReviewModalOpen}
                 onClose={() => setIsReviewModalOpen(false)}
                 pendingClaims={pendingClaims}
-                categories={activePool?.categories || []}
-                onApprove={handleApprove}
-                onReject={handleReject}
+                categories={displayedPool?.categories || []}
+                onApprove={(claimId) => handleReview(claimId, 'approve')}
+                onReject={(claimId, reason) => handleReview(claimId, 'reject', reason)}
                 initialSelectedId={initialClaimId}
-                activePoolName={activePool?.name}
+                activePoolName={displayedPool?.name}
+                isUpdating={isUpdatingClaim}
+                errorMessage={actionError}
+            />}
+            <SubmitExpenseModal
+                isOpen={isSubmitModalOpen}
+                onClose={() => setIsSubmitModalOpen(false)}
+                categories={displayedPool?.categories || []}
+                onSubmit={handleSubmitClaim}
             />
         </div>
     )

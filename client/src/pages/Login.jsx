@@ -2,17 +2,23 @@ import { useState } from 'react';
 import './Login.css';
 
 export default function Login({ onLogin }) {
-    const [username, setUsername] = useState('');
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleLogin = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (username === 'admin' && password === '1234') {
-            onLogin();
-        } else {
-            setError('Invalid username or password.');
+        setError('');
+        setIsSubmitting(true);
+        try {
+            await onLogin({ ...(isRegistering ? { name } : {}), email, password }, isRegistering);
+        } catch (requestError) {
+            setError(requestError.message || 'Unable to sign in.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -20,26 +26,45 @@ export default function Login({ onLogin }) {
         <div className="login-page">
             <div className="login-card">
                 <h1>SPLITVAULT</h1>
-                <p className="login-subtitle">Sign in to your account</p>
+                <p className="login-subtitle">{isRegistering ? 'Create your account' : 'Sign in to your account'}</p>
 
-                <form onSubmit={handleLogin}>
+                <form onSubmit={handleSubmit}>
+                    {isRegistering && (
+                        <div className="input-group">
+                            <label htmlFor="register-name">Name</label>
+                            <input
+                                id="register-name"
+                                type="text"
+                                autoComplete="name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                            />
+                        </div>
+                    )}
+
                     <div className="input-group">
-                        <label>Username</label>
+                        <label htmlFor="login-email">Email</label>
                         <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Enter your username"
+                            id="login-email"
+                            type="email"
+                            autoComplete="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
                         />
                     </div>
 
                     <div className="input-group">
-                        <label>Password</label>
+                        <label htmlFor="login-password">Password</label>
                         <input
+                            id="login-password"
                             type="password"
+                            autoComplete={isRegistering ? 'new-password' : 'current-password'}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Enter your password"
+                            minLength={isRegistering ? 8 : undefined}
+                            required
                         />
                     </div>
 
@@ -48,15 +73,18 @@ export default function Login({ onLogin }) {
                     )}
 
                     <button type="submit" className="login-button">
-                        Login
+                        {isSubmitting ? 'Please wait...' : isRegistering ? 'Create Account' : 'Login'}
                     </button>
 
                     <button
                         type="button"
                         className="register-button"
-                        onClick={() => {}}
+                        onClick={() => {
+                            setIsRegistering(!isRegistering);
+                            setError('');
+                        }}
                     >
-                        Register
+                        {isRegistering ? 'Back to Login' : 'Register'}
                     </button>
 
                 </form>

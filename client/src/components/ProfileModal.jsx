@@ -1,7 +1,7 @@
-import { currentUser } from '../tempData';
 import './ProfileModal.css';
 
-export default function ProfileModal({ onClose }) {
+export default function ProfileModal({ user, onClose }) {
+    const [firstName, ...lastNameParts] = (user?.name || '').split(' ');
     return (
         <div className="profile-modal-overlay">
             <div className="profile-modal">
@@ -26,39 +26,26 @@ export default function ProfileModal({ onClose }) {
                     <div className="profile-info-grid">
 
                         <div className="profile-info-item">
-                            <span>FIRST NAME</span>
-                            <strong>{currentUser.firstName}</strong>
+                            <span>NAME</span>
+                            <strong>{[firstName, ...lastNameParts].filter(Boolean).join(' ') || '—'}</strong>
                         </div>
 
                         <div className="profile-info-item">
-                            <span>LAST NAME</span>
-                            <strong>{currentUser.lastName}</strong>
-                        </div>
-
-                        <div className="profile-info-item">
-                            <span>PHONE NUMBER</span>
-                            <strong>{currentUser.phone}</strong>
+                            <span>ROLE</span>
+                            <strong>{user?.role || '—'}</strong>
                         </div>
 
                         <div className="profile-info-item">
                             <span>EMAIL</span>
-                            <strong>{currentUser.email}</strong>
+                            <strong>{user?.email || '—'}</strong>
                         </div>
 
                     </div>
                 </div>
 
                 <div className="profile-section">
-                    <h3>Transaction History</h3>
-
-                    <div className="no-transactions">
-                        No transactions found for this account.
-                    </div>
-                </div>
-
-                <div className="profile-total">
-                    <span>Total Expenses</span>
-                    <strong>₱0.00</strong>
+                    <h3>Account ID</h3>
+                    <div className="no-transactions">{user?.id || '—'}</div>
                 </div>
 
             </div>

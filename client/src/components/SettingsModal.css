@@ -94,3 +94,89 @@
     color: white;
     border: 1px solid #111;
 }
+
+.settings-modal {
+    width: min(720px, 94vw);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+}
+
+.settings-modal-body {
+    overflow-y: auto;
+}
+
+.settings-modal-body h3 {
+    margin: 0 0 16px;
+    color: #172033;
+}
+
+.settings-section {
+    border-bottom: 1px solid #e4e8ef;
+}
+
+.settings-field {
+    gap: 8px;
+    color: #273449;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.settings-field input,
+.settings-field textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 11px;
+    border: 1px solid #cbd3df;
+    border-radius: 6px;
+    color: #172033;
+    font: inherit;
+    font-weight: 400;
+}
+
+.settings-field textarea {
+    resize: vertical;
+}
+
+.settings-inline-fields {
+    display: flex;
+    gap: 10px;
+}
+
+.settings-inline-fields > label:first-child {
+    flex: 1;
+}
+
+.settings-color-input {
+    height: 39px;
+    padding: 4px !important;
+}
+
+.settings-save-btn {
+    min-height: 39px;
+    border-radius: 6px;
+    padding: 0 15px;
+    font: inherit;
+    font-weight: 600;
+    background: #176b5b;
+    color: white;
+    border-color: #176b5b;
+}
+
+.settings-save-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.settings-error {
+    margin: 0;
+    padding: 0 24px 20px;
+    color: #b42318;
+}
+
+@media (max-width: 540px) {
+    .settings-inline-fields {
+        flex-direction: column;
+    }
+}

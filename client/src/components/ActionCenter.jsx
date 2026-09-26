@@ -1,7 +1,6 @@
-import React from 'react';
 import './ActionCenter.css';
 
-export default function ActionCenter({ claims = [], onSubmitExpense, onReviewAll, onReviewClaim }) {
+export default function ActionCenter({ claims = [], canReview = false, onSubmitExpense, onReviewAll, onReviewClaim }) {
 	const displayClaims = claims.length > 0 ? claims.slice(0, 4) : [];
 
 	return (
@@ -19,7 +18,7 @@ export default function ActionCenter({ claims = [], onSubmitExpense, onReviewAll
 
 			<div className="claims-list">
 				<div className="claims-header">
-					<span className="claims-title">Pending Approvals</span>
+					<span className="claims-title">{canReview ? 'Pending Approvals' : 'My Pending Claims'}</span>
 					<span className="claims-count">{claims.length}</span>
 				</div>
 
@@ -28,8 +27,8 @@ export default function ActionCenter({ claims = [], onSubmitExpense, onReviewAll
 						<div 
 							key={claim.id} 
 							className="claim-mini-card"
-							onClick={() => onReviewClaim(claim.id)}
-							style={{ cursor: 'pointer' }}
+							onClick={canReview ? () => onReviewClaim(claim.id) : undefined}
+							style={{ cursor: canReview ? 'pointer' : 'default' }}
 						>
 							<div className="claim-info">
 								<span className="claim-name">{claim.title || claim.claimant}</span>
@@ -42,7 +41,7 @@ export default function ActionCenter({ claims = [], onSubmitExpense, onReviewAll
 					))}
 				</div>
 
-				{claims.length > 4 && (
+				{canReview && claims.length > 4 && (
 					<div className="action-center-footer">
 						<button 
 							type="button" 

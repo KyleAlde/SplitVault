@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import './ReviewPendingModal.css';
 
 export default function ReviewPendingModal({
@@ -8,53 +8,22 @@ export default function ReviewPendingModal({
     categories = [],
     onApprove,
     onReject,
+    isUpdating = false,
     initialSelectedId = null,
-    activePoolName
+    activePoolName,
+    errorMessage = '',
 }) {
     // Keep track of the currently selected claim in the left queue
-    const [selectedId, setSelectedId] = useState(null);
+    const [selectedId, setSelectedId] = useState(() => initialSelectedId || pendingClaims[0]?.id || null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [isRejecting, setIsRejecting] = useState(false);
 
-    // 1. Handle selection when the modal first opens
-    useEffect(() => {
-        if (isOpen) {
-            if (initialSelectedId) {
-                setSelectedId(initialSelectedId);
-            } else if (pendingClaims.length > 0) {
-                setSelectedId(pendingClaims[0].id);
-            }
-        }
-    }, [isOpen, initialSelectedId]); // Only trigger when opened or specific ID passed
-
-    // 2. Handle auto-advancing if the selected claim is approved/rejected and removed from the list
-    useEffect(() => {
-        if (isOpen && selectedId && pendingClaims.length > 0) {
-            const stillExists = pendingClaims.some((c) => c.id === selectedId);
-            if (!stillExists) {
-                setSelectedId(pendingClaims[0].id); // Advance to next available
-            }
-        } else if (isOpen && pendingClaims.length === 0) {
-            setSelectedId(null);
-        }
-    }, [pendingClaims, isOpen, selectedId]);
-
-    // Default to the first claim when modal opens or claims list changes
-    useEffect(() => {
-        if (pendingClaims.length > 0) {
-            // If current selection is no longer in the list, pick the first one
-            const exists = pendingClaims.some((c) => c.id === selectedId);
-            if (!selectedId || !exists) {
-                setSelectedId(pendingClaims[0].id);
-            }
-        } else {
-            setSelectedId(null);
-        }
-    }, [pendingClaims, selectedId]);
-
     if (!isOpen) return null;
 
-    const activeClaim = pendingClaims.find((c) => c.id === selectedId);
+    const activeSelectedId = pendingClaims.some((claim) => claim.id === selectedId)
+        ? selectedId
+        : pendingClaims[0]?.id;
+    const activeClaim = pendingClaims.find((claim) => claim.id === activeSelectedId);
 
     const getCategoryColor = (categoryName) => {
         return categories.find((cat) => cat.name === categoryName)?.color || 'var(--text)';
@@ -66,11 +35,13 @@ export default function ReviewPendingModal({
         setIsRejecting(false);
     };
 
-    const handleRejectSubmit = () => {
+    const handleRejectSubmit = async () => {
         if (!activeClaim) return;
-        onReject(activeClaim.id, rejectionReason);
-        setRejectionReason('');
-        setIsRejecting(false);
+        const rejected = await onReject(activeClaim.id, rejectionReason);
+        if (rejected) {
+            setRejectionReason('');
+            setIsRejecting(false);
+        }
     };
 
     return (
@@ -82,6 +53,7 @@ export default function ReviewPendingModal({
                     <div>
                         <h2>Pending Approvals</h2>
                         <p className="sub-text">Review disbursement claims and verify attached receipts</p>
+                        {errorMessage && <p role="alert" style={{ color: '#b42318', margin: '8px 0 0', fontSize: 13 }}>{errorMessage}</p>}
                     </div>
                     <button type="button" className="modal-close-btn" onClick={onClose}>
                         ✕
@@ -107,7 +79,7 @@ export default function ReviewPendingModal({
                                 </div>
                             ) : (
                                 pendingClaims.map((claim) => {
-                                    const isSelected = claim.id === selectedId;
+                                    const isSelected = claim.id === activeSelectedId;
                                     return (
                                         <div 
                                             key={claim.id}
@@ -156,7 +128,7 @@ export default function ReviewPendingModal({
                                             {activeClaim.category}
                                         </span>
                                         <h3>{activeClaim.title}</h3>
-                                        <p className="sub-text">Submitted by <strong>{activeClaim.claimant}</strong> ({activeClaim.orgRole || 'Project Lead'}) on {activeClaim.date}</p>
+                                        <p className="sub-text">Submitted by <strong>{activeClaim.claimant}</strong> on {activeClaim.date}</p>
                                     </div>
                                     <div className="inspector-amount-box">
                                         <span className="sub-text">Expense Amount</span>
@@ -208,8 +180,8 @@ export default function ReviewPendingModal({
                                             ) : (
                                                 <div className="receipt-placeholder">
                                                     <span className="placeholder-icon">📄</span>
-                                                    <span>Official Receipt #OR-94821</span>
-                                                    <span className="sub-text">Verified digital scan uploaded</span>
+                                                    <span>{activeClaim.receipt?.fileName || activeClaim.receipt?.filePath || 'No receipt metadata provided'}</span>
+                                                    <span className="sub-text">Receipt preview is unavailable.</span>
                                                 </div>
                                             )}
                                         </div>
@@ -231,6 +203,7 @@ export default function ReviewPendingModal({
                                                 type="button" 
                                                 className="btn-danger"
                                                 onClick={handleRejectSubmit}
+                                                disabled={isUpdating}
                                             >
                                                 Confirm Rejection
                                             </button>
@@ -241,6 +214,7 @@ export default function ReviewPendingModal({
                                                 type="button" 
                                                 className="btn-danger-outline"
                                                 onClick={() => setIsRejecting(true)}
+                                                disabled={isUpdating}
                                             >
                                                 Request Changes / Reject
                                             </button>
@@ -248,6 +222,7 @@ export default function ReviewPendingModal({
                                                 type="button" 
                                                 className="btn-primary-success"
                                                 onClick={handleApproveClick}
+                                                disabled={isUpdating}
                                             >
                                                 Approve Disbursement
                                             </button>

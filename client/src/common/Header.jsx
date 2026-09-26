@@ -1,10 +1,10 @@
-import { currentUser, budgetPools } from '../tempData';
 import notifButton from '../assets/notif_button.svg';
 import './Header.css';
 import { useState } from 'react';
 
-export default function Header({ selectedPoolId, onPoolChange, onLogout, onProfile, onSettings }) {
+export default function Header({ currentUser, pools, selectedPoolId, onPoolChange, onLogout, onProfile, onSettings }) {
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const initials = currentUser?.name?.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?';
     return (
         <header className="floating-header">
             <div className="header-left">
@@ -20,7 +20,8 @@ export default function Header({ selectedPoolId, onPoolChange, onLogout, onProfi
                         value={selectedPoolId}
                         onChange={(e) => onPoolChange(e.target.value)}
                     >
-                        {budgetPools.map((pool) => (
+                        {pools.length === 0 && <option value="">No budget pools</option>}
+                        {pools.map((pool) => (
                             <option key={pool.id} value={pool.id}>
                                 {pool.name}
                             </option>
@@ -30,9 +31,6 @@ export default function Header({ selectedPoolId, onPoolChange, onLogout, onProfi
 
                 <button className="icon-btn" aria-label="Notifications" title="Notifications">
                     <img src={notifButton} alt="" className="nav-icon-img" />
-                    {currentUser.unreadNotifications && (
-                        <span className="notification-dot" />
-                    )}
                 </button>
 
                 {/* User initials avatar with hover tooltip for name & role */}
@@ -43,13 +41,13 @@ export default function Header({ selectedPoolId, onPoolChange, onLogout, onProfi
                         aria-label="Account Options"
                         onClick={() => setShowProfileMenu(!showProfileMenu)}
                         >
-                            {currentUser.initials}
+                            {initials}
                         </button>
 
                         {showProfileMenu && (
                             <div className="profile-menu">
-                                <button onClick={onProfile}>Profile</button>
-                                <button onClick={onSettings}>Settings</button>
+                                <button onClick={() => { setShowProfileMenu(false); onProfile(); }}>Profile</button>
+                                {currentUser.role === 'ADMIN' && <button onClick={() => { setShowProfileMenu(false); onSettings(); }}>Pool Management</button>}
                                 <button onClick={onLogout}>Logout</button>
                             </div>
                         )}
