@@ -3,6 +3,7 @@
 	border: 1px solid var(--border);
 	border-radius: 12px;
 	padding: 24px;
+    margin-top: 50px;
 	display: flex;
 	flex-direction: column;
 	gap: 20px;
@@ -26,7 +27,7 @@
 
 .ledger-card .header-titles h3 {
 	margin: 0;
-	font-size: 16px;
+	font-size: 24px;
 	font-weight: 600;
 	color: var(--text-h);
 }

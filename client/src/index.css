@@ -14,7 +14,7 @@
   --danger: #ef4444;
 
   /* Surfaces, Text & Neutrals */
-  --text: #475569;
+  --text: #25223a;
   --text-h: #0f172a;
   --bg: #ffffff;
   --bg-page: #ffffff; /* Set to white so full background is clean */
@@ -53,9 +53,7 @@ html, body {
   background-color: #ffffff;
 	background-image: 
     url("https://www.transparenttextures.com/patterns/cubes.png"),
-    url("https://www.transparenttextures.com/patterns/cubes.png"),
     url("https://www.transparenttextures.com/patterns/cubes.png");
-  background-attachment: fixed;
 }
 
 #root {
