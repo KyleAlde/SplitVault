@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './common/Header.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import { budgetPools } from './tempData';
@@ -12,34 +13,49 @@ function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  if (!isLoggedIn) {
-    return (
-      <Login onLogin={() => setIsLoggedIn(true)} />
-    );
-  }
-
   return (
-    <>
-      <Header
-        selectedPoolId={selectedPoolId}
-        onPoolChange={setSelectedPoolId}
-        onLogout={() => setIsLoggedIn(false)}
-        onProfile={() => setShowProfile(true)}
-        onSettings={() => setShowSettings(true)}
-      />
-      <DashboardPage selectedPoolId={selectedPoolId} />
+    <BrowserRouter>
+      <Routes>
+        <Route 
+          path="/login" 
+          element={
+            isLoggedIn ? <Navigate to="/" replace /> : <Login onLogin={() => setIsLoggedIn(true)} />
+          } 
+        />
 
-      {showProfile && (
-        <ProfileModal 
-            onClose={() => setShowProfile(false)} />
-      )}
+        <Route 
+          path="/*" 
+          element={
+            isLoggedIn ? (
+              <>
+                <Header
+                  selectedPoolId={selectedPoolId}
+                  onPoolChange={setSelectedPoolId}
+                  onLogout={() => setIsLoggedIn(false)}
+                  onProfile={() => setShowProfile(true)}
+                  onSettings={() => setShowSettings(true)}
+                />
+                
+                <Routes>
+                  <Route path="/" element={<DashboardPage selectedPoolId={selectedPoolId} />} />
+                </Routes>
 
-      {showSettings && (
-        <SettingsModal 
-            onClose={() => setShowSettings(false)} />
-      )}
-    </>
-  )
+                {showProfile && (
+                  <ProfileModal onClose={() => setShowProfile(false)} />
+                )}
+
+                {showSettings && (
+                  <SettingsModal onClose={() => setShowSettings(false)} />
+                )}
+              </>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } 
+        />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
