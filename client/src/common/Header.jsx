@@ -3,7 +3,7 @@ import notifButton from '../assets/notif_button.svg';
 import './Header.css';
 import { useState } from 'react';
 
-export default function Header({ selectedPoolId, onPoolChange, onLogout }) {
+export default function Header({ selectedPoolId, onPoolChange, onLogout, onProfile, onSettings }) {
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     return (
         <header className="floating-header">
@@ -30,7 +30,7 @@ export default function Header({ selectedPoolId, onPoolChange, onLogout }) {
 
                 <button className="icon-btn" aria-label="Notifications" title="Notifications">
                     <img src={notifButton} alt="" className="nav-icon-img" />
-                    {currentUser.hasUnreadNotifications && (
+                    {currentUser.unreadNotifications && (
                         <span className="notification-dot" />
                     )}
                 </button>
@@ -48,8 +48,8 @@ export default function Header({ selectedPoolId, onPoolChange, onLogout }) {
 
                         {showProfileMenu && (
                             <div className="profile-menu">
-                                <button>Profile</button>
-                                <button>Settings</button>
+                                <button onClick={onProfile}>Profile</button>
+                                <button onClick={onSettings}>Settings</button>
                                 <button onClick={onLogout}>Logout</button>
                             </div>
                         )}

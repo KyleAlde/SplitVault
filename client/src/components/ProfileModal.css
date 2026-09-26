@@ -1,0 +1,90 @@
+.profile-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.profile-modal {
+    width: 800px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+}
+
+.profile-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 24px;
+    border-bottom: 1px solid #ddd;
+}
+
+.profile-modal-header h2 {
+    margin: 0 0 5px;
+}
+
+.profile-modal-header p {
+    margin: 0;
+    color: #777;
+}
+
+.profile-close-btn {
+    border: none;
+    background: none;
+    font-size: 28px;
+    cursor: pointer;
+}
+
+.profile-section {
+    padding: 24px;
+    border-bottom: 1px solid #ddd;
+}
+
+.profile-section h3 {
+    margin-top: 0;
+}
+
+.profile-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.profile-info-item {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.profile-info-item span {
+    display: block;
+    font-size: 11px;
+    color: #777;
+    margin-bottom: 5px;
+}
+
+.profile-info-item strong {
+    font-size: 15px;
+}
+
+.no-transactions {
+    padding: 30px;
+    text-align: center;
+    color: #777;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.profile-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 24px;
+    font-size: 18px;
+}

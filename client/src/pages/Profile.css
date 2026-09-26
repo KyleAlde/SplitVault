@@ -1,0 +1,66 @@
+.profile-page {
+    padding: 32px;
+    min-height: 100vh;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.profile-header h1 {
+    margin: 0;
+}
+
+.back-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.profile-info-card,
+.transaction-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.profile-info-card h2,
+.transaction-card h2 {
+    margin-top: 0;
+}
+
+.profile-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.profile-info-grid label {
+    display: block;
+    font-size: 13px;
+    color: #777;
+    margin-bottom: 6px;
+}
+
+.profile-info-grid p {
+    margin: 0;
+    font-size: 16px;
+}
+
+.empty-transactions {
+    color: #777;
+}
+
+.total-expenses {
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid #ddd;
+    padding-top: 20px;
+    margin-top: 20px;
+    font-size: 18px;
+}

@@ -1,7 +1,11 @@
 export const currentUser = {
     id: 'usr_01',
+    firstName: 'Kyle',
+    lastName: 'Alde',
     name: 'Kyle Alde',
     initials: 'KA',
+    phone: '0912 345 6789',
+    email: 'kyle.alde@gmail.com',
     role: 'Treasurer',
     orgName: 'Computer Science Society',
     unreadNotifications: false,
