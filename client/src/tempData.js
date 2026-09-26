@@ -1,10 +1,10 @@
 export const currentUser = {
-	id: 'usr_01',
-	name: 'Kyle Alde',
-	initials: 'KA',
-	role: 'Treasurer',
-	orgName: 'Computer Science Society',
-	unreadNotifications: false,
+    id: 'usr_01',
+    name: 'Kyle Alde',
+    initials: 'KA',
+    role: 'Treasurer',
+    orgName: 'Computer Science Society',
+    unreadNotifications: false,
 };
 
 export const budgetPools = [
@@ -13,8 +13,8 @@ export const budgetPools = [
         name: 'Annual Hackathon 2026',
         totalBudget: 150000.00,
         totalSpent: 62500.00,
-        pendingApprovalsCount: 3,
-        pendingApprovalsTotal: 14500.00,
+        pendingApprovalsCount: 5,        // Updated to 5
+        pendingApprovalsTotal: 22000.00, // Updated total
         categories: [
             { name: 'Venue & Catering', spent: 32000.00, budget: 60000.00, color: '#059669' },
             { name: 'Swag & Merchandise', spent: 18500.00, budget: 40000.00, color: '#425b9a' },
@@ -41,10 +41,12 @@ export const budgetPools = [
             { id: 'clm-110', title: 'HDMI Splitters & Cables', claimant: 'Patricia Lim', category: 'Logistics & Equipment', amount: 1000.00, date: '2026-09-24', status: 'Approved' },
             { id: 'clm-111', title: 'Walkie Talkies (Rental)', claimant: 'Patricia Lim', category: 'Logistics & Equipment', amount: 1500.00, date: '2026-09-24', status: 'Approved' },
 
-            // Pending Claims (Total: 14,500 | Count: 3)
+            // Pending Claims (Total: 22,000 | Count: 5)
             { id: 'clm-112', title: 'Day 2 Meals & PM Snacks', claimant: 'Maria Santos', category: 'Venue & Catering', amount: 8000.00, date: '2026-09-25', status: 'Pending' },
             { id: 'clm-113', title: 'Grand Prize Cash Pool', claimant: 'Juan Dela Cruz', category: 'Prizes & Tokens', amount: 5000.00, date: '2026-09-25', status: 'Pending' },
             { id: 'clm-114', title: 'Projector & Screen Rental', claimant: 'Patricia Lim', category: 'Logistics & Equipment', amount: 1500.00, date: '2026-09-26', status: 'Pending' },
+            { id: 'clm-115', title: 'Extra Hackathon Hoodies', claimant: 'Alex Reyes', category: 'Swag & Merchandise', amount: 5500.00, date: '2026-09-26', status: 'Pending' }, // NEW
+            { id: 'clm-116', title: 'Coffee Bar Station Deposit', claimant: 'Maria Santos', category: 'Venue & Catering', amount: 2000.00, date: '2026-09-26', status: 'Pending' },       // NEW
         ],
     },
     {

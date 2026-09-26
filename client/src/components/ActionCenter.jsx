@@ -2,12 +2,7 @@ import React from 'react';
 import './ActionCenter.css';
 
 export default function ActionCenter({ claims = [], onSubmitExpense, onReviewAll, onViewClaim }) {
-	const displayClaims = claims.length > 0 ? claims.slice(0, 4) : [
-		{ id: 'clm-301', title: 'Org Web Domain & Cloud Hosting', claimant: 'Dev Team Lead', amount: 4800.00, date: '2026-09-15' },
-		{ id: 'clm-302', title: 'Git Workshop Biscuit Packs', claimant: 'John Tan', amount: 5000.00, date: '2026-09-19' },
-		{ id: 'clm-303', title: 'Client Dinner & Alignment', claimant: 'Alex Rivera', amount: 3450.00, date: '2026-09-22' },
-		{ id: 'clm-304', title: 'Grab Ride to Airport', claimant: 'Sarah Chen', amount: 850.00, date: '2026-09-24' }
-	];
+	const displayClaims = claims.length > 0 ? claims.slice(0, 4) : [];
 
 	return (
 		<div className="action-center-card">
@@ -25,7 +20,7 @@ export default function ActionCenter({ claims = [], onSubmitExpense, onReviewAll
 			<div className="claims-list">
 				<div className="claims-header">
 					<span className="claims-title">Pending Approvals</span>
-					<span className="claims-count">{displayClaims.length}</span>
+					<span className="claims-count">{claims.length}</span>
 				</div>
 
 				<div className="claims-items-container">
@@ -46,13 +41,17 @@ export default function ActionCenter({ claims = [], onSubmitExpense, onReviewAll
 					))}
 				</div>
 
-				<button 
-					type="button" 
-					className="btn-view-all"
-					onClick={onReviewAll}
-				>
-					View All Claims →
-				</button>
+				{claims.length > 4 && (
+					<div className="action-center-footer">
+						<button 
+							type="button" 
+							className="btn-view-all"
+							onClick={onReviewAll}
+						>
+							View All Pending ({claims.length}) →
+						</button>
+					</div>
+				)}
 			</div>
 		</div>
 	);

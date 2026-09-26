@@ -6,7 +6,7 @@ import Login from './pages/Login.jsx';
 
 function App() {
   const [selectedPoolId, setSelectedPoolId] = useState(budgetPools[0]?.id || '');
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   if (!isLoggedIn) {
     return (

@@ -50,11 +50,7 @@ html, body {
   background-color: var(--bg-page);
   display: block;
 
-  background-color: #ffffff;
-	background-image: 
-    url("https://www.transparenttextures.com/patterns/cubes.png"),
-    url("https://www.transparenttextures.com/patterns/cubes.png");
-  background-attachment: fixed;
+  background-color: #ffffffc0;
 }
 
 #root {
