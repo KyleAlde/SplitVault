@@ -1,7 +1,7 @@
 import React from 'react';
 import './ActionCenter.css';
 
-export default function ActionCenter({ claims = [], onSubmitExpense, onReviewAll, onViewClaim }) {
+export default function ActionCenter({ claims = [], onSubmitExpense, onReviewAll, onReviewClaim }) {
 	const displayClaims = claims.length > 0 ? claims.slice(0, 4) : [];
 
 	return (
@@ -28,7 +28,8 @@ export default function ActionCenter({ claims = [], onSubmitExpense, onReviewAll
 						<div 
 							key={claim.id} 
 							className="claim-mini-card"
-							onClick={() => onViewClaim && onViewClaim(claim.id)}
+							onClick={() => onReviewClaim(claim.id)}
+							style={{ cursor: 'pointer' }}
 						>
 							<div className="claim-info">
 								<span className="claim-name">{claim.title || claim.claimant}</span>
