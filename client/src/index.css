@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
 :root {
   --primary: #425b9a;
   --primary-hover: #2c3e6b;
@@ -25,7 +27,7 @@
     rgba(0, 0, 0, 0.08) 0 10px 15px -3px, rgba(0, 0, 0, 0.04) 0 4px 6px -2px;
 
   /* Typography */
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: 'Montserrat', system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
@@ -50,7 +52,20 @@ html, body {
   background-color: var(--bg-page);
   display: block;
 
-  background-color: #ffffffc0;
+  background-color: #f4f6fa;
+  background-image: 
+    url("https://www.transparenttextures.com/patterns/cubes.png");
+  background-attachment: fixed;
+  background-size: 80px;
+}
+
+input,
+button,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
 }
 
 #root {
