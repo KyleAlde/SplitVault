@@ -17,7 +17,7 @@ export default function FullLedgerModal({
     return (
         <div className="ledger-modal-overlay" onClick={onClose}>
             <div className="ledger-modal-content" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
+                <div className="ledger-modal-header">
                     <div>
                         <h2>Transaction Ledger</h2>
                         <p className="sub-text">Complete audit trail of all approved disbursements</p>

@@ -142,6 +142,16 @@ function validateCategoryInput(body) {
   return { name, budget };
 }
 
+function validatePoolCategories(categories) {
+  if (categories === undefined) return [];
+  if (!Array.isArray(categories)) throw new ApiError(400, 'Categories must be an array');
+
+  return categories.map((category) => ({
+    ...validateCategoryInput(category),
+    color: typeof category?.color === 'string' && category.color ? category.color : '#425b9a',
+  }));
+}
+
 function remainingBudget(totalBudget, totalSpent) {
   return Math.max(0, Number(totalBudget) - Number(totalSpent));
 }
@@ -212,14 +222,22 @@ app.post('/api/pools', authenticate, requireAdmin, async (req, res, next) => {
     const { name, description, totalBudget } = req.body || {};
     const budget = Number(totalBudget);
     if (!name || !Number.isFinite(budget) || budget <= 0) throw new ApiError(400, 'Name and a positive totalBudget are required');
+    const categories = validatePoolCategories(req.body?.categories);
     const pool = await prisma.$transaction(async (tx) => {
       const created = await tx.budgetPool.create({ data: { name, description, totalBudget: budget } });
+      if (categories.length) {
+        await tx.category.createMany({
+          data: categories.map((category) => ({ ...category, poolId: created.id })),
+        });
+      }
       await tx.budgetPoolMember.create({ data: { poolId: created.id, userId: req.user.id, role: 'ADMIN' } });
       await writeAudit(tx, { action: 'POOL_CREATED', userId: req.user.id, poolId: created.id, details: { name, totalBudget: budget } });
       return created;
     });
     res.status(201).json({ pool: poolView(pool) });
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error?.code === 'P2002' ? new ApiError(409, 'Category already exists in this pool') : error);
+  }
 });
 
 app.patch('/api/pools/:poolId', authenticate, async (req, res, next) => {
@@ -428,4 +446,4 @@ if (require.main === module) {
   app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
 }
 
-module.exports = { app, prisma, ApiError, validateClaimInput, validateCategoryInput, remainingBudget };
+module.exports = { app, prisma, ApiError, validateClaimInput, validateCategoryInput, validatePoolCategories, remainingBudget };

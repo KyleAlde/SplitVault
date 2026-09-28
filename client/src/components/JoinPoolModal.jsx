@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './JoinPoolModal.css';
 
 export default function JoinPoolModal({ isOpen, onClose }) {
     const [poolIdInput, setPoolIdInput] = useState('');
@@ -36,20 +37,17 @@ export default function JoinPoolModal({ isOpen, onClose }) {
         <div className="modal-overlay" onClick={handleClose}>
             <div className="light-card modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>Join Budget Pool</h2>
+                    <h2 style={{ fontSize: '26px', fontWeight: '700', margin: '0 0 8px 0', color: '#0f172a' }}>
+                        Join Budget Pool
+                    </h2>
                     <p>Enter the Pool ID provided by your administrator to request access.</p>
                 </div>
 
                 {requestSuccess ? (
-                    <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                        <div style={{ 
-                            width: '56px', height: '56px', borderRadius: '50%', 
-                            background: '#d1fae5', color: '#059669',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            margin: '0 auto 16px auto', fontSize: '24px'
-                        }}>✓</div>
-                        <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#0f172a' }}>Request Sent</h3>
-                        <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Waiting for admin approval.</p>
+                    <div className="success-container">
+                        <div className="success-icon">✓</div>
+                        <h3 className="success-title">Request Sent</h3>
+                        <p className="success-subtitle">Waiting for admin approval.</p>
                     </div>
                 ) : (
                     <form onSubmit={handleJoinSubmit}>
@@ -71,12 +69,11 @@ export default function JoinPoolModal({ isOpen, onClose }) {
                             <label htmlFor="request-note">Request Note (Optional)</label>
                             <textarea
                                 id="request-note"
-                                className="standard-input"
+                                className="standard-input textarea-no-resize"
                                 rows="3"
                                 placeholder="Let the admin know why you need access..."
                                 value={requestNote}
                                 onChange={(e) => setRequestNote(e.target.value)}
-                                style={{ resize: 'none' }}
                             />
                         </div>
 
@@ -90,10 +87,17 @@ export default function JoinPoolModal({ isOpen, onClose }) {
                             </button>
                             <button 
                                 type="submit" 
-                                className="btn-brand" 
+                                className="btn-brand-custom" 
                                 disabled={isSubmitting || !poolIdInput.trim()}
                             >
-                                {isSubmitting ? 'Submitting...' : 'Request Access'}
+                                {isSubmitting ? (
+                                    <>
+                                        <span className="spinner" />
+                                        Submitting...
+                                    </>
+                                ) : (
+                                    'Request Access'
+                                )}
                             </button>
                         </div>
                     </form>

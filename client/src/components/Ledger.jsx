@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import FullLedgerModal from './FullLedgerModal';
+import ClaimDetailsModal from './ClaimDetailsModal';
 import './Ledger.css';
 
-export default function Ledger({ claims = [], categories = [] }) {
+export default function Ledger({ claims = [], categories = [], activePoolName }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedClaim, setSelectedClaim] = useState(null);
     
     // Modal-specific filters
     const [modalSearch, setModalSearch] = useState('');
@@ -52,8 +54,17 @@ export default function Ledger({ claims = [], categories = [] }) {
         }
 
         return claimsList.map((claim) => (
-            <tr key={claim.id}>
-                <td className="col-title">{claim.title}</td>
+            <tr key={claim.id} onClick={() => setSelectedClaim(claim)}>
+                <td className="col-title">
+                    <button
+                        type="button"
+                        className="ledger-claim-details-trigger"
+                        aria-label={`View details for ${claim.title}`}
+                        onClick={() => setSelectedClaim(claim)}
+                    >
+                        {claim.title}
+                    </button>
+                </td>
                 <td className="col-claimant">{claim.claimant}</td>
                 <td>
                     <span className="category-pill">
@@ -134,6 +145,14 @@ export default function Ledger({ claims = [], categories = [] }) {
                 modalCategory={modalCategory}
                 setModalCategory={setModalCategory}
                 renderTableRows={renderTableRows}
+            />
+            <ClaimDetailsModal
+                isOpen={Boolean(selectedClaim)}
+                onClose={() => setSelectedClaim(null)}
+                onBack={isModalOpen ? () => setSelectedClaim(null) : undefined}
+                claim={selectedClaim}
+                categories={categories}
+                activePoolName={activePoolName}
             />
         </>
     );

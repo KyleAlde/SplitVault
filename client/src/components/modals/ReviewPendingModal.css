@@ -14,7 +14,16 @@
     overflow: hidden;
 }
 
-.modal-header h2 {
+.review-modal-content > .modal-header {
+    padding: 24px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border);
+}
+
+.review-modal-content > .modal-header h2 {
     font-size: 24px;
 }
 

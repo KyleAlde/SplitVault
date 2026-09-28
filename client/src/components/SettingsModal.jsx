@@ -107,7 +107,7 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
                 <div className="settings-modal-body">
                     {selectedPool && <>
                         <form className="settings-section" onSubmit={savePool}>
-                            <h3>Active Pool</h3>
+                            <h3>Edit Active Pool</h3>
                             <label className="settings-field">
                                 Pool name
                                 <input value={poolName} onChange={(event) => setPoolName(event.target.value)} required />
@@ -164,27 +164,8 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
                             <button className="settings-save-btn" type="submit" disabled={isSaving}>Add category</button>
                         </form>
                     </>}
-
-                    <form className="settings-section" onSubmit={createPool}>
-                        <h3>Create Budget Pool</h3>
-                        <label className="settings-field">
-                            Pool name
-                            <input value={newPoolName} onChange={(event) => setNewPoolName(event.target.value)} required />
-                        </label>
-                        <label className="settings-field">
-                            Description
-                            <textarea value={newPoolDescription} onChange={(event) => setNewPoolDescription(event.target.value)} rows={2} />
-                        </label>
-                        <label className="settings-field">
-                            Total budget (PHP)
-                            <input type="number" min="0.01" step="0.01" value={newPoolBudget} onChange={(event) => setNewPoolBudget(event.target.value)} required />
-                        </label>
-                        <button className="settings-save-btn" type="submit" disabled={isSaving}>Create pool</button>
-                    </form>
-
                     {error && <p className="settings-error" role="alert">{error}</p>}
                 </div>
-
             </div>
         </div>
     );

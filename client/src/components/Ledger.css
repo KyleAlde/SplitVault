@@ -114,6 +114,10 @@
 	background-color: var(--code-bg);
 }
 
+.ledger-table tbody tr:has(.ledger-claim-details-trigger) {
+	cursor: pointer;
+}
+
 .ledger-table tr:last-child td {
 	border-bottom: none;
 }
@@ -121,6 +125,25 @@
 /* Typography & Pillars */
 .col-title {
 	font-weight: 600;
+}
+
+.ledger-claim-details-trigger {
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.ledger-claim-details-trigger:hover {
+	text-decoration: underline;
+}
+
+.ledger-claim-details-trigger:focus-visible {
+	outline: 2px solid var(--text-h);
+	outline-offset: 3px;
 }
 
 .col-claimant {
@@ -234,15 +257,16 @@
 	}
 }
 
-.modal-header {
+.ledger-modal-header {
 	padding: 24px;
 	display: flex;
+	flex-direction: row;
 	justify-content: space-between;
 	align-items: flex-start;
 	border-bottom: 1px solid var(--border);
 }
 
-.modal-header h2 {
+.ledger-modal-header h2 {
 	margin: 0 0 4px 0;
 	font-size: 20px;
 	font-weight: 600;

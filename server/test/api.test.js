@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
 const { google } = require('googleapis');
-const { app, ApiError, validateClaimInput, validateCategoryInput, remainingBudget } = require('../index');
+const { app, ApiError, validateClaimInput, validateCategoryInput, validatePoolCategories, remainingBudget } = require('../index');
 const {
   getReceiptAccessUrl,
   getDriveFileId,
@@ -46,6 +46,15 @@ test('category validation requires a trimmed name and positive budget', () => {
   assert.throws(() => validateCategoryInput({ name: 'Travel', budget: 0 }), ApiError);
   assert.throws(() => validateCategoryInput({ name: 'Travel', budget: 'not a number' }), ApiError);
   assert.deepEqual(validateCategoryInput({ name: ' Travel ', budget: '10.50' }), { name: 'Travel', budget: 10.5 });
+});
+
+test('pool category validation accepts mapped categories and defaults missing categories', () => {
+  assert.deepEqual(validatePoolCategories(undefined), []);
+  assert.deepEqual(validatePoolCategories([{ name: ' Travel ', budget: '10.50', color: '#123456' }]), [
+    { name: 'Travel', budget: 10.5, color: '#123456' },
+  ]);
+  assert.throws(() => validatePoolCategories({ name: 'Travel', budget: 10 }), ApiError);
+  assert.throws(() => validatePoolCategories([{ name: 'Travel', budget: 0 }]), ApiError);
 });
 
 test('Drive file IDs and image preview URLs are derived from Drive links', () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import Header from './common/Header.jsx';
+import HomePage from './pages/HomePage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import Login from './pages/Login.jsx';
 import ProfileModal from './components/ProfileModal.jsx';
@@ -8,6 +9,49 @@ import SettingsModal from './components/SettingsModal.jsx';
 import { apiRequest } from './api.js';
 
 const TOKEN_KEY = 'splitvault_token';
+
+function PoolDashboardWrapper({
+  currentUser,
+  pools,
+  token,
+  userRole,
+  poolRefreshKey,
+  onLogout,
+  onProfile,
+  onSettings,
+}) {
+  const { poolId } = useParams();
+  const navigate = useNavigate();
+
+  const handlePoolChange = (selectedPoolId) => {
+    navigate(`/pool/${selectedPoolId}`);
+  };
+
+  const handleHome = () => {
+    navigate('/');
+  };
+
+  return (
+    <>
+      <Header
+        currentUser={currentUser}
+        pools={pools}
+        selectedPoolId={poolId}
+        onPoolChange={handlePoolChange}
+        onLogout={onLogout}
+        onProfile={onProfile}
+        onSettings={onSettings}
+        onHome={handleHome}
+      />
+      <DashboardPage
+        token={token}
+        selectedPoolId={poolId}
+        userRole={userRole}
+        poolRefreshKey={poolRefreshKey}
+      />
+    </>
+  );
+}
 
 function App() {
   const [token, setToken] = useState(() => window.localStorage.getItem(TOKEN_KEY));
@@ -69,6 +113,7 @@ function App() {
     setCurrentUser(null);
     setPools([]);
     setSelectedPoolId('');
+    setShowProfile(false);
   };
 
   const handlePoolCreated = (pool) => {
@@ -80,12 +125,6 @@ function App() {
   const handlePoolUpdated = (pool) => {
     setPools((currentPools) => currentPools.map((currentPool) => currentPool.id === pool.id ? pool : currentPool));
     setPoolRefreshKey((key) => key + 1);
-  };
-
-  const handlePoolChange = (poolId) => {
-    if (pools.some((pool) => pool.id === poolId)) {
-      setSelectedPoolId(poolId);
-    }
   };
 
   return (
@@ -103,39 +142,32 @@ function App() {
         />
 
         <Route 
-          path="/*" 
+          path="/" 
           element={
             sessionStatus === 'authenticated' ? (
-              <>
-                <Header
-                  currentUser={currentUser}
-                  pools={pools}
-                  selectedPoolId={selectedPoolId}
-                  onPoolChange={handlePoolChange}
-                  onLogout={handleLogout}
-                  onProfile={() => setShowProfile(true)}
-                  onSettings={() => setShowSettings(true)}
-                />
-                
-                <Routes>
-                  <Route path="/" element={<DashboardPage token={token} selectedPoolId={selectedPoolId} userRole={currentUser?.role} poolRefreshKey={poolRefreshKey} />} />
-                </Routes>
+              <HomePage token={token} />
+            ) : sessionStatus === 'loading' ? (
+              <div className="app-loading">Connecting to SplitVault...</div>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } 
+        />
 
-                {showProfile && (
-                  <ProfileModal user={currentUser} onClose={() => setShowProfile(false)} />
-                )}
-
-                {showSettings && (
-                  <SettingsModal
-                    key={selectedPoolId}
-                    token={token}
-                    selectedPool={pools.find((pool) => pool.id === selectedPoolId)}
-                    onClose={() => setShowSettings(false)}
-                    onPoolCreated={handlePoolCreated}
-                    onPoolUpdated={handlePoolUpdated}
-                  />
-                )}
-              </>
+        <Route 
+          path="/pool/:poolId" 
+          element={
+            sessionStatus === 'authenticated' ? (
+              <PoolDashboardWrapper
+                currentUser={currentUser}
+                pools={pools}
+                token={token}
+                userRole={currentUser?.role}
+                poolRefreshKey={poolRefreshKey}
+                onLogout={handleLogout}
+                onProfile={() => setShowProfile(true)}
+                onSettings={() => setShowSettings(true)}
+              />
             ) : sessionStatus === 'loading' ? (
               <div className="app-loading">Connecting to SplitVault...</div>
             ) : (
@@ -144,6 +176,25 @@ function App() {
           } 
         />
       </Routes>
+
+      {sessionStatus === 'authenticated' && showProfile && (
+        <ProfileModal
+          user={currentUser}
+          onClose={() => setShowProfile(false)}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {sessionStatus === 'authenticated' && showSettings && (
+        <SettingsModal
+          key={selectedPoolId}
+          token={token}
+          selectedPool={pools.find((pool) => pool.id === selectedPoolId)}
+          onClose={() => setShowSettings(false)}
+          onPoolCreated={handlePoolCreated}
+          onPoolUpdated={handlePoolUpdated}
+        />
+      )}
     </BrowserRouter>
   );
 }

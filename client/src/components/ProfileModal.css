@@ -88,3 +88,25 @@
     padding: 24px;
     font-size: 18px;
 }
+
+.profile-footer {
+    padding: 24px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.profile-logout-btn {
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.profile-logout-btn:hover {
+    background-color: #cc0000;
+}

@@ -1,10 +1,11 @@
 import notifButton from '../assets/notif_button.svg';
+import homeButton from '../assets/home_button.svg';
+import settingsButton from '../assets/settings_button.svg';
 import './Header.css';
-import { useState } from 'react';
 
-export default function Header({ currentUser, pools, selectedPoolId, onPoolChange, onLogout, onProfile, onSettings }) {
-    const [showProfileMenu, setShowProfileMenu] = useState(false);
+export default function Header({ currentUser, pools, selectedPoolId, onPoolChange, onProfile, onSettings, onHome }) {
     const initials = currentUser?.name?.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?';
+    
     return (
         <header className="floating-header">
             <div className="header-left">
@@ -29,30 +30,33 @@ export default function Header({ currentUser, pools, selectedPoolId, onPoolChang
                     </select>
                 </div>
 
+                {/* Home Button */}
+                <button className="icon-btn" aria-label="Home" title="Home" onClick={onHome}>
+                    <img src={homeButton} alt="" className="nav-icon-img" />
+                </button>
+
+                {/* Settings / Pool Management Button (Admin Only) */}
+                {currentUser?.role === 'ADMIN' && (
+                    <button className="icon-btn" aria-label="Settings" title="Pool Management" onClick={onSettings}>
+                        <img src={settingsButton} alt="" className="nav-icon-img" />
+                    </button>
+                )}
+
+                {/* Notifications Button */}
                 <button className="icon-btn" aria-label="Notifications" title="Notifications">
                     <img src={notifButton} alt="" className="nav-icon-img" />
                 </button>
 
-                {/* User initials avatar with hover tooltip for name & role */}
-                <div className ="profile-container">
-                    <button
-                        className="avatar-btn"
-                        title={`${currentUser.name} (${currentUser.role})`}
-                        aria-label="Account Options"
-                        onClick={() => setShowProfileMenu(!showProfileMenu)}
-                        >
-                            {initials}
-                        </button>
-
-                        {showProfileMenu && (
-                            <div className="profile-menu">
-                                <button onClick={() => { setShowProfileMenu(false); onProfile(); }}>Profile</button>
-                                {currentUser.role === 'ADMIN' && <button onClick={() => { setShowProfileMenu(false); onSettings(); }}>Pool Management</button>}
-                                <button onClick={onLogout}>Logout</button>
-                            </div>
-                        )}
-                </div>
+                {/* Profile Button - Opens Profile modal */}
+                <button
+                    className="avatar-btn"
+                    title={`${currentUser.name} (${currentUser.role})`}
+                    aria-label="Profile Options"
+                    onClick={onProfile}
+                >
+                    {initials}
+                </button>
             </div>
         </header>
-    )
+    );
 }

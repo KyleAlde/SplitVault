@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import './DashboardPage.css';
 import MetricsGrid from '../components/MetricsGrid';
 import DonutChart from '../components/DonutChart';
@@ -15,6 +16,9 @@ function formatDate(value) {
 }
 
 export default function DashboardPage({ token, selectedPoolId, userRole, poolRefreshKey }) {
+    const { poolId: urlPoolId } = useParams();
+    const effectivePoolId = urlPoolId || selectedPoolId;
+
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
     const [initialClaimId, setInitialClaimId] = useState(null);
@@ -25,15 +29,15 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
     const [reloadKey, setReloadKey] = useState(0);
 
     useEffect(() => {
-        if (!selectedPoolId) {
+        if (!effectivePoolId) {
             return undefined;
         }
 
         let cancelled = false;
         Promise.all([
-            apiRequest(`/pools/${selectedPoolId}`, { token }),
-            apiRequest(`/pools/${selectedPoolId}/dashboard`, { token }),
-            apiRequest(`/pools/${selectedPoolId}/claims`, { token }),
+            apiRequest(`/pools/${effectivePoolId}`, { token }),
+            apiRequest(`/pools/${effectivePoolId}/dashboard`, { token }),
+            apiRequest(`/pools/${effectivePoolId}/claims`, { token }),
         ]).then(([poolResponse, dashboard, claimsResponse]) => {
             if (cancelled) return;
             const categoryBreakdown = new Map(dashboard.categoryBreakdown.map((category) => [category.name, category]));
@@ -52,7 +56,7 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
             setLoadError(null);
         }).catch((error) => {
             if (!cancelled) setLoadError({
-                poolId: selectedPoolId,
+                poolId: effectivePoolId,
                 message: error.message || 'Unable to load this budget pool.',
             });
         });
@@ -60,10 +64,10 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
         return () => {
             cancelled = true;
         };
-    }, [selectedPoolId, token, reloadKey, poolRefreshKey]);
+    }, [effectivePoolId, token, reloadKey, poolRefreshKey]);
 
-    const displayedPool = activePool?.id === selectedPoolId ? activePool : null;
-    const displayedError = loadError?.poolId === selectedPoolId ? loadError.message : '';
+    const displayedPool = activePool?.id === effectivePoolId ? activePool : null;
+    const displayedError = loadError?.poolId === effectivePoolId ? loadError.message : '';
     const isAdmin = userRole === 'ADMIN';
     const pendingClaims = displayedPool?.claims?.filter((claim) => claim.status === 'Pending') || [];
     const handleSubmitExpense = () => setIsSubmitModalOpen(true);
@@ -98,10 +102,10 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
     };
 
     const handleSubmitClaim = async (formData) => {
-        if (!selectedPoolId) {
+        if (!effectivePoolId) {
             throw new Error('Select a budget pool before submitting an expense claim.');
         }
-        await apiRequest(`/pools/${selectedPoolId}/claims`, {
+        await apiRequest(`/pools/${effectivePoolId}/claims`, {
             token,
             method: 'POST',
             body: formData,
@@ -110,7 +114,7 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
         setReloadKey((key) => key + 1);
     };
 
-    if (!selectedPoolId) return <div className="dashboard-message">No budget pools are available for this account.</div>;
+    if (!effectivePoolId) return <div className="dashboard-message">No budget pools are available for this account.</div>;
     if (!displayedPool && !displayedError) return <div className="dashboard-message">Loading budget pool...</div>;
 
     return (
@@ -124,7 +128,11 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
                         totalBudget={displayedPool.totalBudget || 0}
                         totalSpent={displayedPool.totalSpent || 0}
                     />
-                    <Ledger claims={displayedPool.claims || []} categories={displayedPool.categories || []} />
+                    <Ledger
+                        claims={displayedPool.claims || []}
+                        categories={displayedPool.categories || []}
+                        activePoolName={displayedPool.name}
+                    />
                 </div>
                 <div className="action-center-sidebar">
                     <ActionCenter
@@ -150,14 +158,14 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
                 errorMessage={actionError}
             />}
             <SubmitExpenseModal
-                key={selectedPoolId}
+                key={effectivePoolId}
                 isOpen={isSubmitModalOpen}
                 onClose={() => setIsSubmitModalOpen(false)}
-                poolId={selectedPoolId}
+                poolId={effectivePoolId}
                 categories={displayedPool?.categories || []}
                 remainingBalance={displayedPool?.remainingBalance}
                 onSubmit={handleSubmitClaim}
             />
         </div>
-    )
+    );
 }

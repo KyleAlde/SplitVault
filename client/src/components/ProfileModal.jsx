@@ -1,6 +1,6 @@
 import './ProfileModal.css';
 
-export default function ProfileModal({ user, onClose }) {
+export default function ProfileModal({ user, onClose, onLogout }) {
     const [firstName, ...lastNameParts] = (user?.name || '').split(' ');
     return (
         <div className="profile-modal-overlay">
@@ -46,6 +46,16 @@ export default function ProfileModal({ user, onClose }) {
                 <div className="profile-section">
                     <h3>Account ID</h3>
                     <div className="no-transactions">{user?.id || '—'}</div>
+                </div>
+
+                <div className="profile-footer">
+                    <button
+                        className="profile-logout-btn"
+                        type="button"
+                        onClick={onLogout}
+                    >
+                        Log Out
+                    </button>
                 </div>
 
             </div>

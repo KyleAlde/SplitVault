@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import JoinPoolModal from '../components/JoinPoolModal';
-import { currentUser, budgetPools } from '../tempData';
+import CreatePoolModal from '../components/CreatePoolModal';
+import { apiRequest } from '../api.js';
 import './HomePage.css';
 
 const formatCurrency = (amount) => {
@@ -13,34 +15,108 @@ const formatCurrency = (amount) => {
 };
 
 export default function HomePage({ token }) {
-    const [pools, setPools] = useState(budgetPools);
+    const navigate = useNavigate();
+    const [currentUser, setCurrentUser] = useState(null);
+    const [pools, setPools] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-    const totalMonitoredFunds = pools.reduce((sum, pool) => sum + pool.totalBudget, 0);
-    const totalSpentFunds = pools.reduce((sum, pool) => sum + pool.totalSpent, 0);
-    const availableBalance = totalMonitoredFunds - totalSpentFunds;
+    const fetchHomeData = useCallback(async () => {
+        if (!token) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            // Fetch profile and user pools in parallel
+            const [userRes, poolsRes] = await Promise.all([
+                apiRequest('/me', { token }),
+                apiRequest('/pools', { token }),
+            ]);
+
+            const user = userRes.user;
+            const basePools = poolsRes.pools || [];
+
+            // Fetch dashboard spend details and pending claims count per pool
+            const enrichedPools = await Promise.all(
+                basePools.map(async (pool) => {
+                    try {
+                        const [dashRes, claimsRes] = await Promise.all([
+                            apiRequest(`/pools/${pool.id}/dashboard`, { token }),
+                            apiRequest(`/pools/${pool.id}/claims`, { token }),
+                        ]);
+
+                        const pendingCount = (claimsRes.claims || []).filter(
+                            (claim) => claim.status === 'PENDING'
+                        ).length;
+
+                        return {
+                            ...pool,
+                            totalSpent: dashRes.totalSpent || 0,
+                            pendingApprovalsCount: pendingCount,
+                        };
+                    } catch {
+                        return {
+                            ...pool,
+                            totalSpent: 0,
+                            pendingApprovalsCount: 0,
+                        };
+                    }
+                })
+            );
+
+            setCurrentUser(user);
+            setPools(enrichedPools);
+        } catch (err) {
+            console.error('Failed to load home page data:', err);
+            setError(err.message || 'Failed to fetch dashboard data');
+        } finally {
+            setLoading(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        fetchHomeData();
+    }, [fetchHomeData]);
+
+    if (loading) {
+        return <div className="app-loading">Loading your Vault dashboard...</div>;
+    }
+
+    if (error) {
+        return (
+            <div className="home-layout">
+                <div className="content-wrapper" style={{ paddingTop: '80px', textAlign: 'center' }}>
+                    <h2>Unable to load dashboard</h2>
+                    <p style={{ color: 'var(--text-muted)' }}>{error}</p>
+                    <button className="btn-primary" onClick={fetchHomeData} style={{ marginTop: '16px' }}>
+                        Retry
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const firstName = currentUser?.name ? currentUser.name.split(' ')[0] : 'User';
+    const orgName = 'COMPUTER SCIENCE SOCIETY';
 
     return (
         <div className="home-layout">
-            {/* Background Gradient, Ambient Green Auras & Hex Pattern */}
-            <div className="patterned-bg">
-                <div className="aura-glow aura-brand"></div>
-                <div className="aura-glow aura-emerald"></div>
-                <div className="aura-glow aura-mint"></div>
-                <div className="hex-pattern"></div>
-            </div>
+            <div className="patterned-bg" />
 
             <div className="content-wrapper">
-                {/* Header with Orbitron Typography */}
-                <header className="hero-section">
+                {/* Hero Banner */}
+                <section className="hero-section">
                     <div className="hero-text-group">
                         <div className="hero-badge-row">
-                            <span className="hero-badge">{currentUser.orgName.toUpperCase()} VAULT</span>
+                            <span className="hero-badge">{orgName} VAULT</span>
                             <span className="badge-dot">•</span>
                             <span className="hero-status">Active Session</span>
                         </div>
                         <h1 className="hero-title">
-                            Welcome back, {currentUser.firstName} 👋
+                            Welcome to your Vault, {firstName}
                         </h1>
                         <p className="hero-subtitle">
                             {pools.length > 0 
@@ -48,19 +124,7 @@ export default function HomePage({ token }) {
                                 : `No active pool assignments • Join or establish a new pool to get started`}
                         </p>
                     </div>
-
-                    <div className="light-card hero-metrics-card">
-                        <div className="metric-block">
-                            <span className="metric-label">Monitored Funds</span>
-                            <span className="metric-value text-slate">{formatCurrency(totalMonitoredFunds)}</span>
-                        </div>
-                        <div className="metric-divider"></div>
-                        <div className="metric-block">
-                            <span className="metric-label">Available Balance</span>
-                            <span className="metric-value text-emerald">{formatCurrency(availableBalance)}</span>
-                        </div>
-                    </div>
-                </header>
+                </section>
 
                 <main className="main-content">
                     {/* Budget Pools Section */}
@@ -71,7 +135,7 @@ export default function HomePage({ token }) {
                         </div>
 
                         {pools.length === 0 ? (
-                            <div className="light-card empty-state">
+                            <div className="dashboard-card empty-state">
                                 <div className="empty-icon-wrapper">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                         <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -85,31 +149,27 @@ export default function HomePage({ token }) {
                             </div>
                         ) : (
                             <div className="pools-grid">
-                                {pools.map((pool, idx) => {
-                                    const spentPercentage = Math.min(100, (pool.totalSpent / pool.totalBudget) * 100);
+                                {pools.map((pool) => {
+                                    const spentPercentage = pool.totalBudget > 0 
+                                        ? Math.min(100, (pool.totalSpent / pool.totalBudget) * 100)
+                                        : 0;
                                     const remaining = pool.totalBudget - pool.totalSpent;
                                     const hasAlerts = pool.pendingApprovalsCount > 0;
-                                    
-                                    // Accent variants based on primary brand & subtle green tones
-                                    const headerVariants = ['header-brand', 'header-emerald', 'header-teal'];
-                                    const variantClass = headerVariants[idx % headerVariants.length];
 
                                     return (
-                                        <div key={pool.id} className="light-card pool-card">
-                                            {/* Dual-zone visual window top header */}
-                                            <div className={`card-visual-header ${variantClass}`}>
-                                                <div className="window-dots">
-                                                    <span className="dot dot-red"></span>
-                                                    <span className="dot dot-amber"></span>
-                                                    <span className="dot dot-green"></span>
-                                                    <span className="window-label">{pool.id}</span>
-                                                </div>
-                                                <span className={`category-tag ${hasAlerts ? 'tag-warning' : 'tag-normal'}`}>
+                                        <div 
+                                            key={pool.id} 
+                                            className="dashboard-card pool-card"
+                                            onClick={() => navigate(`/pool/${pool.id}`)}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            <div className="card-top-row">
+                                                <span className="pool-id-tag">{pool.id.slice(0, 8)}</span>
+                                                <span className={`status-badge ${hasAlerts ? 'status-pending' : 'status-normal'}`}>
                                                     {hasAlerts ? `⚠️ ${pool.pendingApprovalsCount} Pending` : 'Up to Date'}
                                                 </span>
                                             </div>
 
-                                            {/* Crisp White Card Body */}
                                             <div className="card-body">
                                                 <h3 className="pool-title">{pool.name}</h3>
                                                 
@@ -124,7 +184,7 @@ export default function HomePage({ token }) {
                                                                 width: `${spentPercentage}%`,
                                                                 background: spentPercentage > 85 
                                                                     ? 'linear-gradient(90deg, #f59e0b, #ef4444)' 
-                                                                    : 'linear-gradient(90deg, #425B9A, #10b981)'
+                                                                    : 'linear-gradient(90deg, #4f46e5, #06b6d4)'
                                                             }}
                                                         />
                                                     </div>
@@ -137,7 +197,7 @@ export default function HomePage({ token }) {
                                                     </div>
                                                     <div className="text-right">
                                                         <span className="metric-caption">Remaining</span>
-                                                        <p className="metric-num text-emerald">{formatCurrency(remaining)}</p>
+                                                        <p className="metric-num text-brand">{formatCurrency(remaining)}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -145,18 +205,18 @@ export default function HomePage({ token }) {
                                     );
                                 })}
 
-                                <div className="light-card create-card" onClick={() => setIsJoinModalOpen(true)}>
+                                <div className="dashboard-card create-card" onClick={() => setIsCreateModalOpen(true)}>
                                     <div className="create-icon-plus">+</div>
-                                    <h4>Establish New Pool</h4>
+                                    <h4>Create New Budget Pool</h4>
                                     <p>Set up allocations and invite contributors.</p>
                                 </div>
                             </div>
                         )}
                     </section>
 
-                    {/* Join Banner */}
+                    {/* Join Pool Action Banner */}
                     <section className="join-pool-section">
-                        <div className="light-card join-banner-card">
+                        <div className="dashboard-card join-banner-card">
                             <div className="join-banner-info">
                                 <div className="key-icon-badge">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -169,7 +229,7 @@ export default function HomePage({ token }) {
                                     <p>Enter a unique Pool ID provided by your administrator to request access.</p>
                                 </div>
                             </div>
-                            <button className="btn-brand" onClick={() => setIsJoinModalOpen(true)}>
+                            <button className="btn-primary" onClick={() => setIsJoinModalOpen(true)}>
                                 Enter Pool ID
                             </button>
                         </div>
@@ -179,7 +239,20 @@ export default function HomePage({ token }) {
 
             <JoinPoolModal 
                 isOpen={isJoinModalOpen} 
-                onClose={() => setIsJoinModalOpen(false)} 
+                onClose={() => {
+                    setIsJoinModalOpen(false);
+                    fetchHomeData();
+                }} 
+            />
+
+            <CreatePoolModal
+                isOpen={isCreateModalOpen}
+                token={token}
+                onClose={() => setIsCreateModalOpen(false)}
+                onPoolCreated={() => {
+                    setIsCreateModalOpen(false);
+                    fetchHomeData();
+                }}
             />
         </div>
     );

@@ -95,12 +95,24 @@
     outline-offset: 2px;
 }
 
-
 .nav-icon-img {
-    width: 22px;
-    height: 22px;
+    width: 27px;
+    height: 27px;
     display: block;
     object-fit: contain;
+}
+
+/* SVG styling for the newly added buttons */
+.icon-btn svg {
+    width: 27px;
+    height: 27px;
+    fill: #64748B;
+    display: block;
+    transition: fill 0.15s ease;
+}
+
+.icon-btn:hover svg {
+    fill: var(--text-h);
 }
 
 .notification-dot {
@@ -132,36 +144,4 @@
 
 .avatar-btn:hover {
     background-color: var(--primary-hover);
-}
-
-.profile-container {
-    position: relative;
-}
-
-.profile-menu {
-    position: absolute;
-    top: 48px;
-    right: 0;
-    width: 160px;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 6px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-}
-
-.profile-menu button {
-    width: 100%;
-    padding: 10px 12px;
-    border: none;
-    background: transparent;
-    text-align: left;
-    border-radius: 7px;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.profile-menu button:hover {
-    background: #f3f4f6;
 }
