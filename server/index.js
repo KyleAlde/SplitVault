@@ -2,9 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
 const { PrismaClient, Prisma } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 require('dotenv').config();
+const { getReceiptAccessUrl, uploadFileToDrive } = require('./utils/gdrive');
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/splitvault?schema=public';
 const adapter = new PrismaPg({ connectionString });
@@ -12,6 +14,24 @@ const prisma = new PrismaClient({ adapter });
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET;
+const MAX_RECEIPT_SIZE = 10 * 1024 * 1024;
+const RECEIPT_EXTENSIONS = {
+  'application/pdf': ['.pdf'],
+  'image/avif': ['.avif'],
+  'image/bmp': ['.bmp'],
+  'image/gif': ['.gif'],
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/tiff': ['.tif', '.tiff'],
+  'image/webp': ['.webp'],
+};
+
+class ApiError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
 
 if (!JWT_SECRET) {
   console.warn('JWT_SECRET is not configured; authentication routes will reject requests.');
@@ -20,12 +40,16 @@ if (!JWT_SECRET) {
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
 app.use(express.json());
 
-class ApiError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
-}
+const receiptUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_RECEIPT_SIZE, files: 1, fields: 10, parts: 11 },
+  fileFilter: (_req, file, callback) => {
+    if (!Object.hasOwn(RECEIPT_EXTENSIONS, file.mimetype)) {
+      return callback(new ApiError(400, 'Receipt must be a PDF or supported image file'));
+    }
+    callback(null, true);
+  },
+});
 
 const toNumber = (value) => Number(value);
 const userView = (user) => ({ id: user.id, name: user.name, email: user.email, role: user.role });
@@ -69,15 +93,41 @@ async function membership(poolId, userId) {
   return member;
 }
 
+async function requirePoolMembership(req, _res, next) {
+  try {
+    const poolId = req.params.poolId;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(poolId)) {
+      throw new ApiError(400, 'Invalid pool or category ID');
+    }
+    const pool = await prisma.budgetPool.findUnique({ where: { id: poolId } });
+    if (!pool) throw new ApiError(400, 'Invalid pool or category ID');
+    await membership(req.params.poolId, req.user.id);
+    req.budgetPool = pool;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function writeAudit(tx, data) {
   return tx.auditLog.create({ data });
 }
 
 function validateClaimInput(body) {
-  const amount = Number(body?.amount);
-  if (!body?.title || !Number.isFinite(amount) || amount <= 0) throw new ApiError(400, 'Title and a positive amount are required');
-  if (!body?.categoryId) throw new ApiError(400, 'A category is required');
-  if (!body?.receipt?.filePath) throw new ApiError(400, 'Receipt filePath is required');
+  const title = typeof body?.title === 'string' ? body.title.trim() : '';
+  if (!title) throw new ApiError(400, 'Title is required');
+  if (title.length > 160) throw new ApiError(400, 'Title must be 160 characters or fewer');
+
+  const amount = Number(String(body?.amount ?? ''));
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new ApiError(400, 'Amount must be a positive number');
+  }
+  if (typeof body?.categoryId !== 'string' || !body.categoryId.trim()) {
+    throw new ApiError(400, 'Category ID is required');
+  }
+  if (typeof body?.incurredAt !== 'string' || !body.incurredAt || Number.isNaN(Date.parse(body.incurredAt))) {
+    throw new ApiError(400, 'Invalid date provided');
+  }
   return amount;
 }
 
@@ -203,44 +253,84 @@ app.post('/api/pools/:poolId/categories', authenticate, async (req, res, next) =
   }
 });
 
-function claimView(claim) {
+async function claimView(claim) {
   return {
     ...claim,
     amount: toNumber(claim.amount),
     category: claim.category ? { ...claim.category, budget: toNumber(claim.category.budget) } : undefined,
     claimant: claim.claimant ? userView(claim.claimant) : undefined,
-    receipt: claim.receipt || undefined,
+    receipt: claim.receipt
+      ? { ...claim.receipt, filePath: await getReceiptAccessUrl(claim.receipt.filePath) }
+      : null,
   };
 }
 
 const claimInclude = { category: true, claimant: true, receipt: true };
 
-app.post('/api/pools/:poolId/claims', authenticate, async (req, res, next) => {
+app.post('/api/pools/:poolId/claims', authenticate, requirePoolMembership, receiptUpload.single('receipt'), async (req, res, next) => {
   try {
-    await membership(req.params.poolId, req.user.id);
-    const amount = validateClaimInput(req.body);
-    const receipt = req.body.receipt;
-    const category = await prisma.category.findFirst({ where: { id: req.body.categoryId, poolId: req.params.poolId } });
-    if (!category) throw new ApiError(400, 'Category does not belong to this budget pool');
+    const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+    const amount = Number(req.body?.amount);
+    const categoryId = req.body?.categoryId;
+    const incurredAt = req.body?.incurredAt ? new Date(req.body.incurredAt) : new Date();
+    const description = typeof req.body?.description === 'string' ? req.body.description : '';
+    const poolId = req.params.poolId;
+    if (Number.isNaN(incurredAt.getTime())) throw new ApiError(400, 'Invalid date provided');
+    validateClaimInput({ title, amount, categoryId, incurredAt: incurredAt.toISOString() });
+    if (typeof categoryId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
+      return res.status(400).json({ error: 'Invalid category ID' });
+    }
+    const category = await prisma.category.findFirst({ where: { id: categoryId, poolId } });
+    if (!category) return res.status(400).json({ error: 'Selected category does not exist in this pool' });
+
+    let receipt = null;
+    if (req.file) {
+      let driveFile;
+      try {
+        driveFile = await uploadFileToDrive(req.file, req.budgetPool.name);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return res.status(500).json({ error: `Failed to upload receipt to Google Drive: ${message}` });
+      }
+      if (driveFile?.error) {
+        return res.status(500).json({ error: `Failed to upload receipt to Google Drive: ${driveFile.message}` });
+      }
+      receipt = {
+        filePath: driveFile.webViewLink,
+        fileName: req.file.originalname,
+        mimeType: req.file.mimetype,
+      };
+    }
+
     const claim = await prisma.$transaction(async (tx) => {
       const created = await tx.expenseClaim.create({
         data: {
-          poolId: req.params.poolId,
+          poolId,
           categoryId: category.id,
           claimantId: req.user.id,
-          title: req.body.title.trim(),
-          description: req.body.description,
+          title,
+          description: description.trim() || null,
           amount,
-          incurredAt: req.body.incurredAt ? new Date(req.body.incurredAt) : new Date(),
-          receipt: { create: { filePath: receipt.filePath, fileName: receipt.fileName, mimeType: receipt.mimeType } },
+          incurredAt,
+          ...(receipt?.filePath ? {
+            receipt: {
+              create: {
+                filePath: receipt.filePath,
+                fileName: receipt.fileName || null,
+                mimeType: receipt.mimeType || null,
+              },
+            },
+          } : {}),
         },
         include: claimInclude,
       });
-      await writeAudit(tx, { action: 'CLAIM_SUBMITTED', userId: req.user.id, poolId: req.params.poolId, claimId: created.id, details: { amount } });
+      await writeAudit(tx, { action: 'CLAIM_SUBMITTED', userId: req.user.id, poolId, claimId: created.id, details: { amount } });
       return created;
     });
-    res.status(201).json({ claim: claimView(claim) });
-  } catch (error) { next(error); }
+    res.status(201).json({ claim: await claimView(claim) });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get('/api/pools/:poolId/claims', authenticate, async (req, res, next) => {
@@ -249,7 +339,7 @@ app.get('/api/pools/:poolId/claims', authenticate, async (req, res, next) => {
     const where = { poolId: req.params.poolId };
     if (req.user.role !== 'ADMIN') where.claimantId = req.user.id;
     const claims = await prisma.expenseClaim.findMany({ where, include: claimInclude, orderBy: { createdAt: 'desc' } });
-    res.json({ claims: claims.map(claimView) });
+    res.json({ claims: await Promise.all(claims.map(claimView)) });
   } catch (error) { next(error); }
 });
 
@@ -259,7 +349,7 @@ app.get('/api/claims/:claimId', authenticate, async (req, res, next) => {
     if (!claim) throw new ApiError(404, 'Expense claim not found');
     await membership(claim.poolId, req.user.id);
     if (req.user.role !== 'ADMIN' && claim.claimantId !== req.user.id) throw new ApiError(403, 'You cannot view this claim');
-    res.json({ claim: claimView(claim) });
+    res.json({ claim: await claimView(claim) });
   } catch (error) { next(error); }
 });
 
@@ -285,7 +375,7 @@ async function reviewClaim(req, res, next, status) {
       await writeAudit(tx, { action: status === 'APPROVED' ? 'CLAIM_APPROVED' : 'CLAIM_REJECTED', userId: req.user.id, poolId: claim.poolId, claimId: claim.id, details: { reviewNote: req.body?.reviewNote } });
       return result;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-    res.json({ claim: claimView(updated) });
+    res.json({ claim: await claimView(updated) });
   } catch (error) { next(error); }
 }
 
@@ -310,6 +400,12 @@ app.get('/api/pools/:poolId/dashboard', authenticate, async (req, res, next) => 
 });
 
 app.use((error, _req, res, _next) => {
+  if (error instanceof multer.MulterError) {
+    const status = error.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+    return res.status(status).json({
+      error: error.code === 'LIMIT_FILE_SIZE' ? 'Receipt file must be 10 MB or smaller' : 'Invalid receipt upload',
+    });
+  }
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
     return res.status(404).json({ error: 'Resource not found' });
   }

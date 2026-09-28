@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import './SubmitExpenseModal.css';
 
 function today() {
@@ -7,13 +7,14 @@ function today() {
     return localDate.toISOString().slice(0, 10);
 }
 
-export default function SubmitExpenseModal({ isOpen, onClose, categories, onSubmit }) {
+export default function SubmitExpenseModal({ isOpen, onClose, poolId, categories, onSubmit }) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [incurredAt, setIncurredAt] = useState(today);
-    const [filePath, setFilePath] = useState('');
+    const [receipt, setReceipt] = useState(null);
+    const receiptInput = useRef(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -22,24 +23,46 @@ export default function SubmitExpenseModal({ isOpen, onClose, categories, onSubm
     const handleSubmit = async (event) => {
         event.preventDefault();
         setError('');
+
+        if (!poolId) {
+            setError('Please select a valid budget pool from the header');
+            return;
+        }
+
+        const parsedAmount = Number.parseFloat(amount);
+        if (!title.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+            setError('Title and a positive amount are required');
+            return;
+        }
+        if (!categoryId || !categories.some((category) => category.id === categoryId)) {
+            setError('Please select a category');
+            return;
+        }
+        const incurredAtDate = new Date(incurredAt);
+        if (!incurredAt || Number.isNaN(incurredAtDate.getTime())) {
+            setError('Please provide a valid expense date');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
-            await onSubmit({
-                title,
-                description,
-                amount: Number(amount),
-                categoryId,
-                incurredAt: new Date(`${incurredAt}T12:00:00`).toISOString(),
-                receipt: { filePath },
-            });
+            const formData = new FormData();
+            formData.append('title', title.trim());
+            formData.append('amount', parsedAmount.toString());
+            formData.append('categoryId', categoryId);
+            formData.append('incurredAt', incurredAt);
+            formData.append('description', description);
+            if (receipt) formData.append('receipt', receipt);
+            await onSubmit(formData);
             setTitle('');
             setDescription('');
             setAmount('');
             setCategoryId('');
             setIncurredAt(today());
-            setFilePath('');
+            setReceipt(null);
+            if (receiptInput.current) receiptInput.current.value = '';
         } catch (requestError) {
-            setError(requestError.message || 'Unable to submit this claim.');
+            setError(requestError.message);
         } finally {
             setIsSubmitting(false);
         }
@@ -81,9 +104,16 @@ export default function SubmitExpenseModal({ isOpen, onClose, categories, onSubm
                     <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} />
                 </label>
                 <label>
-                    Receipt file path
-                    <input value={filePath} onChange={(event) => setFilePath(event.target.value)} required placeholder="e.g. receipts/claim-001.pdf" />
-                    <span className="claim-form-hint">The server stores this path as metadata; it does not upload receipt files.</span>
+                    Receipt attachment (optional)
+                    <input
+                        ref={receiptInput}
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(event) => setReceipt(event.target.files?.[0] || null)}
+                    />
+                    <span className="claim-form-hint">
+                        {receipt ? receipt.name : 'Attach an image or PDF receipt (maximum 10 MB).'}
+                    </span>
                 </label>
                 {error && <p className="claim-form-error" role="alert">{error}</p>}
                 <div className="claim-modal-actions">

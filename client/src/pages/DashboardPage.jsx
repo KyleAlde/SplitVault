@@ -47,7 +47,6 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
                 claimant: claim.claimant?.name || 'Unknown user',
                 category: claim.category?.name || 'Uncategorized',
                 date: formatDate(claim.incurredAt),
-                receiptUrl: /^https?:\/\//i.test(claim.receipt?.filePath || '') ? claim.receipt.filePath : null,
             }));
             setActivePool({ ...poolResponse.pool, ...dashboard, categories, claims });
             setLoadError(null);
@@ -98,11 +97,14 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
         }
     };
 
-    const handleSubmitClaim = async (claim) => {
+    const handleSubmitClaim = async (formData) => {
+        if (!selectedPoolId) {
+            throw new Error('Select a budget pool before submitting an expense claim.');
+        }
         await apiRequest(`/pools/${selectedPoolId}/claims`, {
             token,
             method: 'POST',
-            body: claim,
+            body: formData,
         });
         setIsSubmitModalOpen(false);
         setReloadKey((key) => key + 1);
@@ -148,8 +150,10 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
                 errorMessage={actionError}
             />}
             <SubmitExpenseModal
+                key={selectedPoolId}
                 isOpen={isSubmitModalOpen}
                 onClose={() => setIsSubmitModalOpen(false)}
+                poolId={selectedPoolId}
                 categories={displayedPool?.categories || []}
                 onSubmit={handleSubmitClaim}
             />

@@ -1,5 +1,17 @@
 import { useState } from 'react';
+import { getAssetUrl } from '../../api.js';
 import './ReviewPendingModal.css';
+
+function getDriveFileId(filePath) {
+    if (!filePath) return null;
+    try {
+        const url = new URL(filePath);
+        if (!['drive.google.com', 'docs.google.com'].includes(url.hostname)) return null;
+        return url.pathname.match(/\/d\/([\w-]+)/)?.[1] || url.searchParams.get('id');
+    } catch {
+        return null;
+    }
+}
 
 export default function ReviewPendingModal({
     isOpen,
@@ -24,6 +36,13 @@ export default function ReviewPendingModal({
         ? selectedId
         : pendingClaims[0]?.id;
     const activeClaim = pendingClaims.find((claim) => claim.id === activeSelectedId);
+    const receipt = activeClaim?.receipt;
+    const receiptUrl = receipt?.filePath ? getAssetUrl(receipt.filePath) : '';
+    const driveFileId = getDriveFileId(receipt?.filePath);
+    const receiptPreviewUrl = driveFileId
+        ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveFileId)}&sz=w1600`
+        : receiptUrl;
+    const isImageReceipt = /^image\/(avif|bmp|gif|jpeg|png|tiff|webp)$/i.test(receipt?.mimeType || '');
 
     const getCategoryColor = (categoryName) => {
         return categories.find((cat) => cat.name === categoryName)?.color || 'var(--text)';
@@ -171,16 +190,30 @@ export default function ReviewPendingModal({
                                         <div className="receipt-header-row">
                                             <span className="meta-label">Attached Receipt / Proof</span>
                                             <div className="receipt-tools">
-                                                <button type="button" className="receipt-tool-btn" title="Open Full Image">🔍 Zoom</button>
+                                                {receiptUrl && isImageReceipt && (
+                                                    <a className="receipt-tool-btn" href={receiptUrl} target="_blank" rel="noopener noreferrer">
+                                                        🔍 Open full image
+                                                    </a>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="receipt-viewer-box">
-                                            {activeClaim.receiptUrl ? (
-                                                <img src={activeClaim.receiptUrl} alt="Receipt preview" className="receipt-image" />
+                                            {receiptUrl && isImageReceipt ? (
+                                                <a href={receiptUrl} target="_blank" rel="noopener noreferrer" aria-label="Open full receipt image">
+                                                    <img
+                                                        src={receiptPreviewUrl}
+                                                        alt={receipt.fileName ? `Receipt: ${receipt.fileName}` : 'Receipt preview'}
+                                                        className="receipt-image"
+                                                    />
+                                                </a>
+                                            ) : receiptUrl ? (
+                                                <a className="receipt-tool-btn" href={receiptUrl} target="_blank" rel="noopener noreferrer">
+                                                    Open receipt document{receipt.fileName ? `: ${receipt.fileName}` : ''}
+                                                </a>
                                             ) : (
                                                 <div className="receipt-placeholder">
                                                     <span className="placeholder-icon">📄</span>
-                                                    <span>{activeClaim.receipt?.fileName || activeClaim.receipt?.filePath || 'No receipt metadata provided'}</span>
+                                                    <span>N/A</span>
                                                     <span className="sub-text">Receipt preview is unavailable.</span>
                                                 </div>
                                             )}
