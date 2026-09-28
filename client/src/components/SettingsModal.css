@@ -139,6 +139,12 @@
     resize: vertical;
 }
 
+.settings-field-error {
+    color: #b42318;
+    font-size: 12px;
+    font-weight: 400;
+}
+
 .settings-inline-fields {
     display: flex;
     gap: 10px;

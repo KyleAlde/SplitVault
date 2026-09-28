@@ -82,6 +82,12 @@ function App() {
     setPoolRefreshKey((key) => key + 1);
   };
 
+  const handlePoolChange = (poolId) => {
+    if (pools.some((pool) => pool.id === poolId)) {
+      setSelectedPoolId(poolId);
+    }
+  };
+
   return (
     <BrowserRouter>
       <Routes>
@@ -105,7 +111,7 @@ function App() {
                   currentUser={currentUser}
                   pools={pools}
                   selectedPoolId={selectedPoolId}
-                  onPoolChange={setSelectedPoolId}
+                  onPoolChange={handlePoolChange}
                   onLogout={handleLogout}
                   onProfile={() => setShowProfile(true)}
                   onSettings={() => setShowSettings(true)}
