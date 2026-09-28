@@ -3,6 +3,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
+const path = require('node:path');
 const { PrismaClient, Prisma } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 require('dotenv').config();
@@ -14,15 +15,11 @@ const prisma = new PrismaClient({ adapter });
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET;
-const MAX_RECEIPT_SIZE = 10 * 1024 * 1024;
+const MAX_RECEIPT_SIZE = 5 * 1024 * 1024;
 const RECEIPT_EXTENSIONS = {
   'application/pdf': ['.pdf'],
-  'image/avif': ['.avif'],
-  'image/bmp': ['.bmp'],
-  'image/gif': ['.gif'],
   'image/jpeg': ['.jpg', '.jpeg'],
   'image/png': ['.png'],
-  'image/tiff': ['.tif', '.tiff'],
   'image/webp': ['.webp'],
 };
 
@@ -44,8 +41,12 @@ const receiptUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_RECEIPT_SIZE, files: 1, fields: 10, parts: 11 },
   fileFilter: (_req, file, callback) => {
-    if (!Object.hasOwn(RECEIPT_EXTENSIONS, file.mimetype)) {
-      return callback(new ApiError(400, 'Receipt must be a PDF or supported image file'));
+    const extensions = Object.hasOwn(RECEIPT_EXTENSIONS, file.mimetype)
+      ? RECEIPT_EXTENSIONS[file.mimetype]
+      : null;
+    const extension = path.extname(file.originalname).toLowerCase();
+    if (!extensions || !extensions.includes(extension)) {
+      return callback(new ApiError(400, 'Receipt must be a PNG, JPEG, WebP, or PDF file'));
     }
     callback(null, true);
   },
@@ -129,6 +130,16 @@ function validateClaimInput(body) {
     throw new ApiError(400, 'Invalid date provided');
   }
   return amount;
+}
+
+function validateCategoryInput(body) {
+  const name = typeof body?.name === 'string' ? body.name.trim() : '';
+  const budget = Number(body?.budget);
+  if (!name) throw new ApiError(400, 'Category name is required');
+  if (!Number.isFinite(budget) || budget <= 0) {
+    throw new ApiError(400, 'Category budget must be a positive number');
+  }
+  return { name, budget };
 }
 
 function remainingBudget(totalBudget, totalSpent) {
@@ -240,16 +251,15 @@ app.post('/api/pools/:poolId/categories', authenticate, async (req, res, next) =
   try {
     await membership(req.params.poolId, req.user.id);
     if (req.user.role !== 'ADMIN') throw new ApiError(403, 'Administrator access required');
-    const budget = Number(req.body?.budget);
-    if (!req.body?.name || !Number.isFinite(budget) || budget < 0) throw new ApiError(400, 'Name and a non-negative budget are required');
+    const { name, budget } = validateCategoryInput(req.body);
     const category = await prisma.$transaction(async (tx) => {
-      const created = await tx.category.create({ data: { poolId: req.params.poolId, name: req.body.name.trim(), budget, color: req.body.color || '#425b9a' } });
+      const created = await tx.category.create({ data: { poolId: req.params.poolId, name, budget, color: req.body.color || '#425b9a' } });
       await writeAudit(tx, { action: 'CATEGORY_CREATED', userId: req.user.id, poolId: req.params.poolId, details: { name: created.name } });
       return created;
     });
     res.status(201).json({ category: { ...category, budget: toNumber(category.budget) } });
   } catch (error) {
-    next(error.code === 'P2002' ? new ApiError(409, 'Category already exists in this pool') : error);
+    next(error?.code === 'P2002' ? new ApiError(409, 'Category already exists in this pool') : error);
   }
 });
 
@@ -365,7 +375,7 @@ async function reviewClaim(req, res, next, status) {
         const approved = await tx.expenseClaim.aggregate({ _sum: { amount: true }, where: { poolId: claim.poolId, status: 'APPROVED' } });
         const pool = await tx.budgetPool.findUnique({ where: { id: claim.poolId } });
         const spent = Number(approved._sum.amount || 0);
-        if (spent + Number(claim.amount) > Number(pool.totalBudget)) throw new ApiError(409, 'Insufficient remaining budget');
+        if (spent + Number(claim.amount) > Number(pool.totalBudget)) throw new ApiError(400, 'Insufficient remaining budget');
       }
       const result = await tx.expenseClaim.update({
         where: { id: claim.id },
@@ -403,7 +413,7 @@ app.use((error, _req, res, _next) => {
   if (error instanceof multer.MulterError) {
     const status = error.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
     return res.status(status).json({
-      error: error.code === 'LIMIT_FILE_SIZE' ? 'Receipt file must be 10 MB or smaller' : 'Invalid receipt upload',
+      error: error.code === 'LIMIT_FILE_SIZE' ? 'Receipt file must be 5 MB or smaller' : 'Invalid receipt upload',
     });
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
@@ -418,4 +428,4 @@ if (require.main === module) {
   app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
 }
 
-module.exports = { app, prisma, ApiError, validateClaimInput, remainingBudget };
+module.exports = { app, prisma, ApiError, validateClaimInput, validateCategoryInput, remainingBudget };

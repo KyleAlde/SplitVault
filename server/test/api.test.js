@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
 const { google } = require('googleapis');
-const { app, ApiError, validateClaimInput, remainingBudget } = require('../index');
+const { app, ApiError, validateClaimInput, validateCategoryInput, remainingBudget } = require('../index');
 const {
   getReceiptAccessUrl,
   getDriveFileId,
@@ -39,6 +39,13 @@ test('valid expense validation permits claims without a receipt', () => {
   assert.equal(validateClaimInput({ title: 'Claim', amount: 10, categoryId: 'cat', incurredAt, receipt: { filePath: 'receipt.pdf' } }), 10);
   assert.equal(remainingBudget(100, 25), 75);
   assert.equal(remainingBudget(100, 120), 0);
+});
+
+test('category validation requires a trimmed name and positive budget', () => {
+  assert.throws(() => validateCategoryInput({ name: '  ', budget: 10 }), ApiError);
+  assert.throws(() => validateCategoryInput({ name: 'Travel', budget: 0 }), ApiError);
+  assert.throws(() => validateCategoryInput({ name: 'Travel', budget: 'not a number' }), ApiError);
+  assert.deepEqual(validateCategoryInput({ name: ' Travel ', budget: '10.50' }), { name: 'Travel', budget: 10.5 });
 });
 
 test('Drive file IDs and image preview URLs are derived from Drive links', () => {

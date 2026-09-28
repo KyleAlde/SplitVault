@@ -11,6 +11,8 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
     const [categoryName, setCategoryName] = useState('');
     const [categoryBudget, setCategoryBudget] = useState('');
     const [categoryColor, setCategoryColor] = useState('#425b9a');
+    const [categoryNameError, setCategoryNameError] = useState('');
+    const [categoryBudgetError, setCategoryBudgetError] = useState('');
     const [error, setError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -55,15 +57,27 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
     const createCategory = async (event) => {
         event.preventDefault();
         setError('');
+        const trimmedCategoryName = categoryName.trim();
+        const parsedCategoryBudget = Number(categoryBudget);
+        const nameError = trimmedCategoryName ? '' : 'Category name cannot be empty.';
+        const budgetError = Number.isFinite(parsedCategoryBudget) && parsedCategoryBudget > 0
+            ? ''
+            : 'Enter a category budget greater than ₱0.00.';
+        setCategoryNameError(nameError);
+        setCategoryBudgetError(budgetError);
+        if (nameError || budgetError) return;
+
         setIsSaving(true);
         try {
             await apiRequest(`/pools/${selectedPool.id}/categories`, {
                 token,
                 method: 'POST',
-                body: { name: categoryName, budget: Number(categoryBudget), color: categoryColor },
+                body: { name: trimmedCategoryName, budget: parsedCategoryBudget, color: categoryColor },
             });
             setCategoryName('');
             setCategoryBudget('');
+            setCategoryNameError('');
+            setCategoryBudgetError('');
             onPoolUpdated(selectedPool);
         } catch (requestError) {
             setError(requestError.message || 'Unable to create this category.');
@@ -109,12 +123,38 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
                             <h3>Add Category</h3>
                             <label className="settings-field">
                                 Category name
-                                <input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} required />
+                                <input
+                                    value={categoryName}
+                                    onChange={(event) => {
+                                        setCategoryName(event.target.value);
+                                        setCategoryNameError(event.target.value.trim() ? '' : 'Category name cannot be empty.');
+                                    }}
+                                    aria-invalid={Boolean(categoryNameError)}
+                                    aria-describedby="category-name-error"
+                                    required
+                                />
+                                {categoryNameError && <span id="category-name-error" className="settings-field-error" role="alert">{categoryNameError}</span>}
                             </label>
                             <div className="settings-inline-fields">
                                 <label className="settings-field">
                                     Category budget (PHP)
-                                    <input type="number" min="0" step="0.01" value={categoryBudget} onChange={(event) => setCategoryBudget(event.target.value)} required />
+                                    <input
+                                        type="number"
+                                        min="0.01"
+                                        step="0.01"
+                                        value={categoryBudget}
+                                        onChange={(event) => {
+                                            setCategoryBudget(event.target.value);
+                                            const value = Number(event.target.value);
+                                            setCategoryBudgetError(event.target.value && Number.isFinite(value) && value > 0
+                                                ? ''
+                                                : 'Enter a category budget greater than ₱0.00.');
+                                        }}
+                                        aria-invalid={Boolean(categoryBudgetError)}
+                                        aria-describedby="category-budget-error"
+                                        required
+                                    />
+                                    {categoryBudgetError && <span id="category-budget-error" className="settings-field-error" role="alert">{categoryBudgetError}</span>}
                                 </label>
                                 <label className="settings-field">
                                     Color

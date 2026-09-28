@@ -86,6 +86,17 @@
     font-size: 13px;
 }
 
+.claim-budget-warning {
+    padding: 9px 11px;
+    border: 1px solid #f0d89a;
+    border-radius: 6px;
+    background: #fff8e6;
+    color: #795b14;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.45;
+}
+
 .claim-modal-actions {
     justify-content: flex-end;
     padding-top: 4px;

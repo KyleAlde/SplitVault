@@ -155,6 +155,7 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
                 onClose={() => setIsSubmitModalOpen(false)}
                 poolId={selectedPoolId}
                 categories={displayedPool?.categories || []}
+                remainingBalance={displayedPool?.remainingBalance}
                 onSubmit={handleSubmitClaim}
             />
         </div>
