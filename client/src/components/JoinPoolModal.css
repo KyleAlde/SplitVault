@@ -28,6 +28,12 @@
     font-size: 14px;
 }
 
+.join-request-error {
+    color: #b91c1c;
+    font-size: 14px;
+    margin: 0 0 16px;
+}
+
 .textarea-no-resize {
     resize: none;
 }

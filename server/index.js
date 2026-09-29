@@ -81,12 +81,16 @@ async function authenticate(req, _res, next) {
   }
 }
 
-function requireAdmin(req, _res, next) {
-  if (req.user.role !== 'ADMIN') return next(new ApiError(403, 'Administrator access required'));
-  next();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function validateId(value, label = 'ID') {
+  if (typeof value !== 'string' || !UUID_PATTERN.test(value)) {
+    throw new ApiError(400, `Invalid ${label}`);
+  }
 }
 
 async function membership(poolId, userId) {
+  validateId(poolId, 'pool ID');
   const member = await prisma.budgetPoolMember.findUnique({
     where: { poolId_userId: { poolId, userId } },
   });
@@ -94,10 +98,16 @@ async function membership(poolId, userId) {
   return member;
 }
 
+async function requirePoolAdmin(poolId, userId) {
+  const member = await membership(poolId, userId);
+  if (member.role !== 'ADMIN') throw new ApiError(403, 'Administrator access required');
+  return member;
+}
+
 async function requirePoolMembership(req, _res, next) {
   try {
     const poolId = req.params.poolId;
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(poolId)) {
+    if (!UUID_PATTERN.test(poolId)) {
       throw new ApiError(400, 'Invalid pool or category ID');
     }
     const pool = await prisma.budgetPool.findUnique({ where: { id: poolId } });
@@ -142,13 +152,21 @@ function validateCategoryInput(body) {
   return { name, budget };
 }
 
+function validateCategoryColor(color) {
+  if (color === undefined || color === null || color === '') return '#425b9a';
+  if (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color)) {
+    throw new ApiError(400, 'Category color must be a valid hex color');
+  }
+  return color;
+}
+
 function validatePoolCategories(categories) {
   if (categories === undefined) return [];
   if (!Array.isArray(categories)) throw new ApiError(400, 'Categories must be an array');
 
   return categories.map((category) => ({
     ...validateCategoryInput(category),
-    color: typeof category?.color === 'string' && category.color ? category.color : '#425b9a',
+    color: validateCategoryColor(category?.color),
   }));
 }
 
@@ -197,34 +215,46 @@ app.get('/api/pools', authenticate, async (req, res, next) => {
   try {
     const pools = await prisma.budgetPool.findMany({
       where: { members: { some: { userId: req.user.id } } },
+      include: { members: { where: { userId: req.user.id }, select: { role: true } } },
       orderBy: { createdAt: 'asc' },
     });
-    res.json({ pools: pools.map(poolView) });
+    res.json({ pools: pools.map((pool) => ({ ...poolView(pool), role: pool.members[0].role })) });
   } catch (error) { next(error); }
 });
 
 app.get('/api/pools/:poolId', authenticate, async (req, res, next) => {
   try {
-    await membership(req.params.poolId, req.user.id);
+    const member = await membership(req.params.poolId, req.user.id);
     const pool = await prisma.budgetPool.findUnique({
       where: { id: req.params.poolId },
       include: { categories: { orderBy: { name: 'asc' } } },
     });
     if (!pool) throw new ApiError(404, 'Budget pool not found');
     res.json({
-      pool: { ...poolView(pool), categories: pool.categories.map((category) => ({ ...category, budget: toNumber(category.budget) })) },
+      pool: {
+        ...poolView(pool),
+        role: member.role,
+        categories: pool.categories.map((category) => ({ ...category, budget: toNumber(category.budget) })),
+      },
     });
   } catch (error) { next(error); }
 });
 
-app.post('/api/pools', authenticate, requireAdmin, async (req, res, next) => {
+app.post('/api/pools', authenticate, async (req, res, next) => {
   try {
     const { name, description, totalBudget } = req.body || {};
     const budget = Number(totalBudget);
-    if (!name || !Number.isFinite(budget) || budget <= 0) throw new ApiError(400, 'Name and a positive totalBudget are required');
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
+    if (!trimmedName || !Number.isFinite(budget) || budget <= 0) throw new ApiError(400, 'Name and a positive totalBudget are required');
     const categories = validatePoolCategories(req.body?.categories);
     const pool = await prisma.$transaction(async (tx) => {
-      const created = await tx.budgetPool.create({ data: { name, description, totalBudget: budget } });
+      const created = await tx.budgetPool.create({
+        data: {
+          name: trimmedName,
+          description: typeof description === 'string' ? description.trim() || null : null,
+          totalBudget: budget,
+        },
+      });
       if (categories.length) {
         await tx.category.createMany({
           data: categories.map((category) => ({ ...category, poolId: created.id })),
@@ -234,7 +264,7 @@ app.post('/api/pools', authenticate, requireAdmin, async (req, res, next) => {
       await writeAudit(tx, { action: 'POOL_CREATED', userId: req.user.id, poolId: created.id, details: { name, totalBudget: budget } });
       return created;
     });
-    res.status(201).json({ pool: poolView(pool) });
+    res.status(201).json({ pool: { ...poolView(pool), role: 'ADMIN' } });
   } catch (error) {
     next(error?.code === 'P2002' ? new ApiError(409, 'Category already exists in this pool') : error);
   }
@@ -242,8 +272,7 @@ app.post('/api/pools', authenticate, requireAdmin, async (req, res, next) => {
 
 app.patch('/api/pools/:poolId', authenticate, async (req, res, next) => {
   try {
-    await membership(req.params.poolId, req.user.id);
-    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'Administrator access required');
+    const member = await requirePoolAdmin(req.params.poolId, req.user.id);
     const data = {};
     if (typeof req.body?.name === 'string' && req.body.name.trim()) data.name = req.body.name.trim();
     if (typeof req.body?.description === 'string') data.description = req.body.description;
@@ -253,7 +282,7 @@ app.patch('/api/pools/:poolId', authenticate, async (req, res, next) => {
       await writeAudit(tx, { action: 'POOL_UPDATED', userId: req.user.id, poolId: updated.id, details: data });
       return updated;
     });
-    res.json({ pool: poolView(pool) });
+    res.json({ pool: { ...poolView(pool), role: member.role } });
   } catch (error) { next(error); }
 });
 
@@ -267,11 +296,11 @@ app.get('/api/pools/:poolId/categories', authenticate, async (req, res, next) =>
 
 app.post('/api/pools/:poolId/categories', authenticate, async (req, res, next) => {
   try {
-    await membership(req.params.poolId, req.user.id);
-    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'Administrator access required');
+    await requirePoolAdmin(req.params.poolId, req.user.id);
     const { name, budget } = validateCategoryInput(req.body);
+    const color = validateCategoryColor(req.body?.color);
     const category = await prisma.$transaction(async (tx) => {
-      const created = await tx.category.create({ data: { poolId: req.params.poolId, name, budget, color: req.body.color || '#425b9a' } });
+      const created = await tx.category.create({ data: { poolId: req.params.poolId, name, budget, color } });
       await writeAudit(tx, { action: 'CATEGORY_CREATED', userId: req.user.id, poolId: req.params.poolId, details: { name: created.name } });
       return created;
     });
@@ -280,6 +309,107 @@ app.post('/api/pools/:poolId/categories', authenticate, async (req, res, next) =
     next(error?.code === 'P2002' ? new ApiError(409, 'Category already exists in this pool') : error);
   }
 });
+
+function accessRequestView(accessRequest) {
+  return {
+    id: accessRequest.id,
+    poolId: accessRequest.poolId,
+    userId: accessRequest.userId,
+    requestNote: accessRequest.requestNote,
+    status: accessRequest.status,
+    createdAt: accessRequest.createdAt,
+    updatedAt: accessRequest.updatedAt,
+    ...(accessRequest.user ? {
+      user: { id: accessRequest.user.id, name: accessRequest.user.name, email: accessRequest.user.email },
+    } : {}),
+  };
+}
+
+app.post('/api/pools/:poolId/access-requests', authenticate, async (req, res, next) => {
+  try {
+    const { poolId } = req.params;
+    validateId(poolId, 'pool ID');
+    const pool = await prisma.budgetPool.findUnique({ where: { id: poolId }, select: { id: true } });
+    if (!pool) throw new ApiError(404, 'Budget pool not found');
+
+    const existingMembership = await prisma.budgetPoolMember.findUnique({
+      where: { poolId_userId: { poolId, userId: req.user.id } },
+    });
+    if (existingMembership) throw new ApiError(409, 'You are already a member of this budget pool');
+
+    const rawNote = req.body?.requestNote;
+    if (rawNote !== undefined && typeof rawNote !== 'string') {
+      throw new ApiError(400, 'Request note must be a string');
+    }
+    const requestNote = typeof rawNote === 'string' ? rawNote.trim() : '';
+    if (requestNote.length > 1000) throw new ApiError(400, 'Request note must be 1000 characters or fewer');
+
+    const accessRequest = await prisma.poolAccessRequest.upsert({
+      where: { poolId_userId: { poolId, userId: req.user.id } },
+      create: { poolId, userId: req.user.id, requestNote: requestNote || null },
+      update: { requestNote: requestNote || null, status: 'PENDING' },
+    });
+    res.status(201).json({ request: accessRequestView(accessRequest) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/pools/:poolId/access-requests', authenticate, async (req, res, next) => {
+  try {
+    await requirePoolAdmin(req.params.poolId, req.user.id);
+    const requests = await prisma.poolAccessRequest.findMany({
+      where: { poolId: req.params.poolId, status: 'PENDING' },
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json({ requests: requests.map(accessRequestView) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function resolveAccessRequest(req, res, next, status) {
+  try {
+    const { poolId, requestId } = req.params;
+    await requirePoolAdmin(poolId, req.user.id);
+    validateId(requestId, 'request ID');
+
+    const updatedRequest = await prisma.$transaction(async (tx) => {
+      const accessRequest = await tx.poolAccessRequest.findFirst({
+        where: { id: requestId, poolId },
+      });
+      if (!accessRequest) throw new ApiError(404, 'Pool access request not found');
+      if (accessRequest.status !== 'PENDING') throw new ApiError(409, 'Only pending requests can be resolved');
+
+      if (status === 'APPROVED') {
+        const member = await tx.budgetPoolMember.findUnique({
+          where: { poolId_userId: { poolId, userId: accessRequest.userId } },
+        });
+        if (member) throw new ApiError(409, 'The requester is already a member of this budget pool');
+        await tx.budgetPoolMember.create({
+          data: { poolId, userId: accessRequest.userId, role: 'CONTRIBUTOR' },
+        });
+      }
+
+      return tx.poolAccessRequest.update({
+        where: { id: accessRequest.id },
+        data: { status },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    res.json({ request: accessRequestView(updatedRequest) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+app.post('/api/pools/:poolId/access-requests/:requestId/approve', authenticate, (req, res, next) => (
+  resolveAccessRequest(req, res, next, 'APPROVED')
+));
+app.post('/api/pools/:poolId/access-requests/:requestId/reject', authenticate, (req, res, next) => (
+  resolveAccessRequest(req, res, next, 'REJECTED')
+));
 
 async function claimView(claim) {
   return {
@@ -363,9 +493,9 @@ app.post('/api/pools/:poolId/claims', authenticate, requirePoolMembership, recei
 
 app.get('/api/pools/:poolId/claims', authenticate, async (req, res, next) => {
   try {
-    await membership(req.params.poolId, req.user.id);
+    const member = await membership(req.params.poolId, req.user.id);
     const where = { poolId: req.params.poolId };
-    if (req.user.role !== 'ADMIN') where.claimantId = req.user.id;
+    if (member.role !== 'ADMIN') where.claimantId = req.user.id;
     const claims = await prisma.expenseClaim.findMany({ where, include: claimInclude, orderBy: { createdAt: 'desc' } });
     res.json({ claims: await Promise.all(claims.map(claimView)) });
   } catch (error) { next(error); }
@@ -375,8 +505,8 @@ app.get('/api/claims/:claimId', authenticate, async (req, res, next) => {
   try {
     const claim = await prisma.expenseClaim.findUnique({ where: { id: req.params.claimId }, include: claimInclude });
     if (!claim) throw new ApiError(404, 'Expense claim not found');
-    await membership(claim.poolId, req.user.id);
-    if (req.user.role !== 'ADMIN' && claim.claimantId !== req.user.id) throw new ApiError(403, 'You cannot view this claim');
+    const member = await membership(claim.poolId, req.user.id);
+    if (member.role !== 'ADMIN' && claim.claimantId !== req.user.id) throw new ApiError(403, 'You cannot view this claim');
     res.json({ claim: await claimView(claim) });
   } catch (error) { next(error); }
 });
@@ -385,8 +515,7 @@ async function reviewClaim(req, res, next, status) {
   try {
     const claim = await prisma.expenseClaim.findUnique({ where: { id: req.params.claimId }, include: claimInclude });
     if (!claim) throw new ApiError(404, 'Expense claim not found');
-    await membership(claim.poolId, req.user.id);
-    if (req.user.role !== 'ADMIN') throw new ApiError(403, 'Administrator access required');
+    await requirePoolAdmin(claim.poolId, req.user.id);
     if (claim.status !== 'PENDING') throw new ApiError(409, 'Only pending claims can be reviewed');
     const updated = await prisma.$transaction(async (tx) => {
       if (status === 'APPROVED') {
@@ -433,6 +562,9 @@ app.use((error, _req, res, _next) => {
     return res.status(status).json({
       error: error.code === 'LIMIT_FILE_SIZE' ? 'Receipt file must be 5 MB or smaller' : 'Invalid receipt upload',
     });
+  }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    return res.status(409).json({ error: 'A conflicting resource already exists' });
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
     return res.status(404).json({ error: 'Resource not found' });

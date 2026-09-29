@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JoinPoolModal from '../components/JoinPoolModal';
 import CreatePoolModal from '../components/CreatePoolModal';
@@ -239,6 +239,7 @@ export default function HomePage({ token }) {
 
             <JoinPoolModal 
                 isOpen={isJoinModalOpen} 
+                token={token}
                 onClose={() => {
                     setIsJoinModalOpen(false);
                     fetchHomeData();

@@ -3,7 +3,7 @@ import homeButton from '../assets/home_button.svg';
 import settingsButton from '../assets/settings_button.svg';
 import './Header.css';
 
-export default function Header({ currentUser, pools, selectedPoolId, onPoolChange, onProfile, onSettings, onHome }) {
+export default function Header({ currentUser, pools, selectedPoolId, userRole, onPoolChange, onProfile, onSettings, onHome }) {
     const initials = currentUser?.name?.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?';
     
     return (
@@ -36,7 +36,7 @@ export default function Header({ currentUser, pools, selectedPoolId, onPoolChang
                 </button>
 
                 {/* Settings / Pool Management Button (Admin Only) */}
-                {currentUser?.role === 'ADMIN' && (
+                {userRole === 'ADMIN' && (
                     <button className="icon-btn" aria-label="Settings" title="Pool Management" onClick={onSettings}>
                         <img src={settingsButton} alt="" className="nav-icon-img" />
                     </button>

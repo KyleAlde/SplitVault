@@ -17,6 +17,12 @@ enum ClaimStatus {
   REJECTED
 }
 
+enum PoolAccessRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum AuditAction {
   POOL_CREATED
   POOL_UPDATED
@@ -27,32 +33,35 @@ enum AuditAction {
 }
 
 model User {
-  id           String             @id @default(uuid()) @db.Uuid
-  name         String
-  email        String             @unique
-  passwordHash String
-  role         Role               @default(CONTRIBUTOR)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  memberships  BudgetPoolMember[]
-  claims       ExpenseClaim[]     @relation("Claimant")
-  reviewed     ExpenseClaim[]     @relation("Reviewer")
-  auditLogs    AuditLog[]
+  id             String              @id @default(uuid()) @db.Uuid
+  name           String
+  email          String              @unique
+  passwordHash   String
+  /// Retained for account compatibility; pool authorization uses BudgetPoolMember.role.
+  role           Role                @default(CONTRIBUTOR)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  memberships    BudgetPoolMember[]
+  accessRequests PoolAccessRequest[]
+  claims         ExpenseClaim[]      @relation("Claimant")
+  reviewed       ExpenseClaim[]      @relation("Reviewer")
+  auditLogs      AuditLog[]
 
   @@index([role])
 }
 
 model BudgetPool {
-  id          String             @id @default(uuid()) @db.Uuid
-  name        String
-  description String?
-  totalBudget Decimal            @db.Decimal(12, 2)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  members     BudgetPoolMember[]
-  categories  Category[]
-  claims      ExpenseClaim[]
-  auditLogs   AuditLog[]
+  id             String              @id @default(uuid()) @db.Uuid
+  name           String
+  description    String?
+  totalBudget    Decimal             @db.Decimal(12, 2)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  members        BudgetPoolMember[]
+  categories     Category[]
+  claims         ExpenseClaim[]
+  auditLogs      AuditLog[]
+  accessRequests PoolAccessRequest[]
 
   @@index([createdAt])
 }
@@ -67,6 +76,21 @@ model BudgetPoolMember {
 
   @@id([poolId, userId])
   @@index([userId])
+}
+
+model PoolAccessRequest {
+  id          String                  @id @default(uuid()) @db.Uuid
+  poolId      String                  @db.Uuid
+  userId      String                  @db.Uuid
+  requestNote String?
+  status      PoolAccessRequestStatus @default(PENDING)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  pool        BudgetPool              @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, userId])
+  @@index([poolId, status, createdAt])
 }
 
 model Category {
@@ -85,24 +109,24 @@ model Category {
 }
 
 model ExpenseClaim {
-  id          String       @id @default(uuid()) @db.Uuid
-  poolId      String       @db.Uuid
-  categoryId  String       @db.Uuid
-  claimantId  String       @db.Uuid
-  reviewerId  String?      @db.Uuid
+  id          String      @id @default(uuid()) @db.Uuid
+  poolId      String      @db.Uuid
+  categoryId  String      @db.Uuid
+  claimantId  String      @db.Uuid
+  reviewerId  String?     @db.Uuid
   title       String
   description String?
-  amount      Decimal      @db.Decimal(12, 2)
+  amount      Decimal     @db.Decimal(12, 2)
   incurredAt  DateTime
-  status      ClaimStatus  @default(PENDING)
+  status      ClaimStatus @default(PENDING)
   reviewNote  String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   approvedAt  DateTime?
-  pool        BudgetPool   @relation(fields: [poolId], references: [id], onDelete: Cascade)
-  category    Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  claimant    User         @relation("Claimant", fields: [claimantId], references: [id], onDelete: Restrict)
-  reviewer    User?        @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  pool        BudgetPool  @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  claimant    User        @relation("Claimant", fields: [claimantId], references: [id], onDelete: Restrict)
+  reviewer    User?       @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
   receipt     Receipt?
 
   @@index([poolId, status])

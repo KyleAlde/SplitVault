@@ -2,7 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
 const { google } = require('googleapis');
-const { app, ApiError, validateClaimInput, validateCategoryInput, validatePoolCategories, remainingBudget } = require('../index');
+const jwt = require('jsonwebtoken');
+process.env.JWT_SECRET ||= 'splitvault-api-test-secret';
+const { app, prisma, ApiError, validateClaimInput, validateCategoryInput, validatePoolCategories, remainingBudget } = require('../index');
 const {
   getReceiptAccessUrl,
   getDriveFileId,
@@ -11,10 +13,294 @@ const {
   uploadFileToDrive,
 } = require('../utils/gdrive');
 
+const TEST_POOL_ID = '11111111-1111-4111-8111-111111111111';
+const TEST_USER_ID = '22222222-2222-4222-8222-222222222222';
+const TEST_REQUEST_ID = '33333333-3333-4333-8333-333333333333';
+const TEST_ADMIN_ID = '44444444-4444-4444-8444-444444444444';
+
+function authHeader(userId = TEST_USER_ID) {
+  return `Bearer ${jwt.sign({ sub: userId }, process.env.JWT_SECRET)}`;
+}
+
+async function withPrismaMocks(mocks, callback) {
+  const originals = [];
+  for (const [target, method, implementation] of mocks) {
+    originals.push([target, method, target[method]]);
+    target[method] = implementation;
+  }
+  try {
+    return await callback();
+  } finally {
+    for (const [target, method, implementation] of originals) {
+      target[method] = implementation;
+    }
+  }
+}
+
+function authMocks(userRole = 'CONTRIBUTOR') {
+  return [[prisma.user, 'findUnique', async ({ where }) => ({
+    id: where.id,
+    name: 'Test User',
+    email: 'test@example.com',
+    role: userRole,
+  })]];
+}
+
 test('health endpoint is available', async () => {
   const response = await request(app).get('/api/health');
   assert.equal(response.status, 200);
   assert.equal(response.body.status, 'ok');
+});
+
+test('pool administrators are authorized by membership role, not global user role', async () => {
+  const calls = [];
+  await withPrismaMocks([
+    ...authMocks('CONTRIBUTOR'),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+    [prisma, '$transaction', async (callback) => callback(prisma)],
+    [prisma.budgetPool, 'update', async ({ data }) => {
+      calls.push(data);
+      return { id: TEST_POOL_ID, name: data.name, description: null, totalBudget: 100 };
+    }],
+    [prisma.auditLog, 'create', async () => ({})],
+  ], async () => {
+    const response = await request(app)
+      .patch(`/api/pools/${TEST_POOL_ID}`)
+      .set('Authorization', authHeader())
+      .send({ name: ' Updated pool ' });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.pool.name, 'Updated pool');
+    assert.deepEqual(calls, [{ name: 'Updated pool' }]);
+  });
+
+  await withPrismaMocks([
+    ...authMocks('ADMIN'),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'CONTRIBUTOR' })],
+    [prisma.category, 'create', async () => {
+      throw new Error('A contributor must not create a category');
+    }],
+  ], async () => {
+    const response = await request(app)
+      .post(`/api/pools/${TEST_POOL_ID}/categories`)
+      .set('Authorization', authHeader())
+      .send({ name: 'Travel', budget: 10 });
+    assert.equal(response.status, 403);
+    assert.deepEqual(response.body, { error: 'Administrator access required' });
+  });
+});
+
+test('pool creation grants the creator pool-admin membership', async () => {
+  let createdMember;
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma.budgetPool, 'create', async ({ data }) => ({ id: TEST_POOL_ID, ...data, totalBudget: 100 })],
+    [prisma.budgetPoolMember, 'create', async ({ data }) => {
+      createdMember = data;
+      return data;
+    }],
+    [prisma.auditLog, 'create', async () => ({})],
+    [prisma, '$transaction', async (callback) => callback(prisma)],
+  ], async () => {
+    const response = await request(app)
+      .post('/api/pools')
+      .set('Authorization', authHeader())
+      .send({ name: '  New pool  ', totalBudget: 100 });
+    assert.equal(response.status, 201);
+    assert.equal(response.body.pool.name, 'New pool');
+    assert.deepEqual(createdMember, {
+      poolId: TEST_POOL_ID,
+      userId: TEST_USER_ID,
+      role: 'ADMIN',
+    });
+  });
+});
+
+test('pool listing exposes each user pool-relative role', async () => {
+  await withPrismaMocks([
+    ...authMocks('CONTRIBUTOR'),
+    [prisma.budgetPool, 'findMany', async () => [{
+      id: TEST_POOL_ID,
+      name: 'Scoped pool',
+      description: null,
+      totalBudget: 100,
+      members: [{ role: 'ADMIN' }],
+    }]],
+  ], async () => {
+    const response = await request(app)
+      .get('/api/pools')
+      .set('Authorization', authHeader());
+    assert.equal(response.status, 200);
+    assert.equal(response.body.pools[0].role, 'ADMIN');
+  });
+});
+
+test('claim review authorization follows the user pool membership role', async () => {
+  const claim = {
+    id: TEST_REQUEST_ID,
+    poolId: TEST_POOL_ID,
+    categoryId: '55555555-5555-4555-8555-555555555555',
+    claimantId: '66666666-6666-4666-8666-666666666666',
+    amount: 10,
+    status: 'PENDING',
+    category: { id: '55555555-5555-4555-8555-555555555555', budget: 100 },
+    claimant: { id: TEST_USER_ID, name: 'Test User', email: 'test@example.com', role: 'CONTRIBUTOR' },
+    receipt: null,
+  };
+  await withPrismaMocks([
+    ...authMocks('CONTRIBUTOR'),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+    [prisma.expenseClaim, 'findUnique', async () => claim],
+    [prisma.expenseClaim, 'aggregate', async () => ({ _sum: { amount: 0 } })],
+    [prisma.budgetPool, 'findUnique', async () => ({ totalBudget: 100 })],
+    [prisma.expenseClaim, 'update', async ({ data }) => ({ ...claim, ...data })],
+    [prisma.auditLog, 'create', async () => ({})],
+    [prisma, '$transaction', async (callback) => callback(prisma)],
+  ], async () => {
+    const response = await request(app)
+      .post(`/api/claims/${TEST_REQUEST_ID}/approve`)
+      .set('Authorization', authHeader());
+    assert.equal(response.status, 200);
+    assert.equal(response.body.claim.status, 'APPROVED');
+    assert.equal(response.body.claim.reviewerId, TEST_USER_ID);
+  });
+
+  await withPrismaMocks([
+    ...authMocks('ADMIN'),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'CONTRIBUTOR' })],
+    [prisma.expenseClaim, 'findUnique', async () => claim],
+  ], async () => {
+    const response = await request(app)
+      .post(`/api/claims/${TEST_REQUEST_ID}/reject`)
+      .set('Authorization', authHeader());
+    assert.equal(response.status, 403);
+    assert.deepEqual(response.body, { error: 'Administrator access required' });
+  });
+});
+
+test('pool access requests can be submitted, reviewed, and approved as a contributor', async () => {
+  const requestState = {
+    id: TEST_REQUEST_ID,
+    poolId: TEST_POOL_ID,
+    userId: TEST_USER_ID,
+    requestNote: 'Need access',
+    status: 'PENDING',
+    createdAt: new Date('2026-09-29T00:00:00.000Z'),
+    updatedAt: new Date('2026-09-29T00:00:00.000Z'),
+  };
+  const createdMembers = [];
+  const mocks = [
+    ...authMocks(),
+    [prisma.budgetPool, 'findUnique', async () => ({ id: TEST_POOL_ID })],
+    [prisma.budgetPoolMember, 'findUnique', async ({ where }) => {
+      const { userId } = where.poolId_userId;
+      if (userId === TEST_ADMIN_ID) return { role: 'ADMIN' };
+      if (userId === TEST_USER_ID && requestState.status === 'PENDING') return null;
+      return createdMembers.find((member) => member.userId === userId) || null;
+    }],
+    [prisma.poolAccessRequest, 'upsert', async ({ create, update }) => {
+      Object.assign(requestState, create, update);
+      return { ...requestState };
+    }],
+    [prisma.poolAccessRequest, 'findMany', async () => [{ ...requestState, user: {
+      id: TEST_USER_ID,
+      name: 'Test User',
+      email: 'test@example.com',
+    } }]],
+    [prisma.poolAccessRequest, 'findFirst', async () => ({ ...requestState })],
+    [prisma.poolAccessRequest, 'update', async ({ data }) => Object.assign(requestState, data)],
+    [prisma.budgetPoolMember, 'create', async ({ data }) => {
+      createdMembers.push(data);
+      return data;
+    }],
+    [prisma, '$transaction', async (callback) => callback(prisma)],
+  ];
+
+  await withPrismaMocks(mocks, async () => {
+    const submitted = await request(app)
+      .post(`/api/pools/${TEST_POOL_ID}/access-requests`)
+      .set('Authorization', authHeader())
+      .send({ requestNote: '  Need access  ' });
+    assert.equal(submitted.status, 201);
+    assert.equal(submitted.body.request.requestNote, 'Need access');
+    assert.equal(submitted.body.request.status, 'PENDING');
+
+    const listed = await request(app)
+      .get(`/api/pools/${TEST_POOL_ID}/access-requests`)
+      .set('Authorization', authHeader(TEST_ADMIN_ID));
+    assert.equal(listed.status, 200);
+    assert.equal(listed.body.requests.length, 1);
+    assert.equal(listed.body.requests[0].user.email, 'test@example.com');
+
+    const approved = await request(app)
+      .post(`/api/pools/${TEST_POOL_ID}/access-requests/${TEST_REQUEST_ID}/approve`)
+      .set('Authorization', authHeader(TEST_ADMIN_ID));
+    assert.equal(approved.status, 200);
+    assert.equal(approved.body.request.status, 'APPROVED');
+    assert.deepEqual(createdMembers, [{
+      poolId: TEST_POOL_ID,
+      userId: TEST_USER_ID,
+      role: 'CONTRIBUTOR',
+    }]);
+  });
+});
+
+test('pool admins can reject pending access requests', async () => {
+  const pendingRequest = {
+    id: TEST_REQUEST_ID,
+    poolId: TEST_POOL_ID,
+    userId: TEST_USER_ID,
+    requestNote: null,
+    status: 'PENDING',
+  };
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+    [prisma.poolAccessRequest, 'findFirst', async () => pendingRequest],
+    [prisma.poolAccessRequest, 'update', async ({ data }) => ({ ...pendingRequest, ...data })],
+    [prisma, '$transaction', async (callback) => callback(prisma)],
+  ], async () => {
+    const response = await request(app)
+      .post(`/api/pools/${TEST_POOL_ID}/access-requests/${TEST_REQUEST_ID}/reject`)
+      .set('Authorization', authHeader());
+    assert.equal(response.status, 200);
+    assert.equal(response.body.request.status, 'REJECTED');
+  });
+});
+
+test('access requests reject missing pools, existing members, and non-admin reviewers', async () => {
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma.budgetPool, 'findUnique', async () => null],
+  ], async () => {
+    const response = await request(app)
+      .post(`/api/pools/${TEST_POOL_ID}/access-requests`)
+      .set('Authorization', authHeader())
+      .send({});
+    assert.equal(response.status, 404);
+    assert.deepEqual(response.body, { error: 'Budget pool not found' });
+  });
+
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma.budgetPool, 'findUnique', async () => ({ id: TEST_POOL_ID })],
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'CONTRIBUTOR' })],
+  ], async () => {
+    const response = await request(app)
+      .post(`/api/pools/${TEST_POOL_ID}/access-requests`)
+      .set('Authorization', authHeader())
+      .send({});
+    assert.equal(response.status, 409);
+  });
+
+  await withPrismaMocks([
+    ...authMocks('ADMIN'),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'CONTRIBUTOR' })],
+  ], async () => {
+    const response = await request(app)
+      .get(`/api/pools/${TEST_POOL_ID}/access-requests`)
+      .set('Authorization', authHeader());
+    assert.equal(response.status, 403);
+  });
 });
 
 test('unauthenticated protected requests are rejected', async () => {
@@ -46,6 +332,7 @@ test('category validation requires a trimmed name and positive budget', () => {
   assert.throws(() => validateCategoryInput({ name: 'Travel', budget: 0 }), ApiError);
   assert.throws(() => validateCategoryInput({ name: 'Travel', budget: 'not a number' }), ApiError);
   assert.deepEqual(validateCategoryInput({ name: ' Travel ', budget: '10.50' }), { name: 'Travel', budget: 10.5 });
+  assert.throws(() => validatePoolCategories([{ name: 'Travel', budget: 10, color: 'not-a-color' }]), ApiError);
 });
 
 test('pool category validation accepts mapped categories and defaults missing categories', () => {

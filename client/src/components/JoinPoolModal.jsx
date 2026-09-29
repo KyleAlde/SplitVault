@@ -1,28 +1,38 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { apiRequest } from '../api.js';
 import './JoinPoolModal.css';
 
-export default function JoinPoolModal({ isOpen, onClose }) {
+export default function JoinPoolModal({ isOpen, onClose, token }) {
     const [poolIdInput, setPoolIdInput] = useState('');
     const [requestNote, setRequestNote] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [requestSuccess, setRequestSuccess] = useState(false);
+    const [error, setError] = useState('');
 
     if (!isOpen) return null;
 
-    const handleJoinSubmit = (e) => {
+    const handleJoinSubmit = async (e) => {
         e.preventDefault();
-        if (!poolIdInput.trim()) return;
+        const poolId = poolIdInput.trim();
+        if (!poolId) return;
 
         setIsSubmitting(true);
-        
-        setTimeout(() => {
-            setIsSubmitting(false);
+        setError('');
+        try {
+            await apiRequest(`/pools/${encodeURIComponent(poolId)}/access-requests`, {
+                token,
+                method: 'POST',
+                body: { requestNote },
+            });
             setRequestSuccess(true);
-            
             setTimeout(() => {
                 handleClose();
             }, 1800);
-        }, 1000);
+        } catch (requestError) {
+            setError(requestError.message || 'Unable to send your access request.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleClose = () => {
@@ -30,6 +40,7 @@ export default function JoinPoolModal({ isOpen, onClose }) {
         setRequestNote('');
         setRequestSuccess(false);
         setIsSubmitting(false);
+        setError('');
         onClose();
     };
 
@@ -57,7 +68,7 @@ export default function JoinPoolModal({ isOpen, onClose }) {
                                 id="pool-id"
                                 className="standard-input"
                                 type="text"
-                                placeholder="e.g. pool-2024-q1"
+                                placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000"
                                 value={poolIdInput}
                                 onChange={(e) => setPoolIdInput(e.target.value)}
                                 required
@@ -76,6 +87,8 @@ export default function JoinPoolModal({ isOpen, onClose }) {
                                 onChange={(e) => setRequestNote(e.target.value)}
                             />
                         </div>
+
+                        {error && <p className="join-request-error" role="alert">{error}</p>}
 
                         <div className="modal-actions">
                             <button 

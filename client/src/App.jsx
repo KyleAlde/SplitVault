@@ -14,7 +14,6 @@ function PoolDashboardWrapper({
   currentUser,
   pools,
   token,
-  userRole,
   poolRefreshKey,
   onLogout,
   onProfile,
@@ -22,6 +21,7 @@ function PoolDashboardWrapper({
 }) {
   const { poolId } = useParams();
   const navigate = useNavigate();
+  const selectedPool = pools.find((pool) => pool.id === poolId);
 
   const handlePoolChange = (selectedPoolId) => {
     navigate(`/pool/${selectedPoolId}`);
@@ -37,6 +37,7 @@ function PoolDashboardWrapper({
         currentUser={currentUser}
         pools={pools}
         selectedPoolId={poolId}
+        userRole={selectedPool?.role}
         onPoolChange={handlePoolChange}
         onLogout={onLogout}
         onProfile={onProfile}
@@ -46,7 +47,7 @@ function PoolDashboardWrapper({
       <DashboardPage
         token={token}
         selectedPoolId={poolId}
-        userRole={userRole}
+        userRole={selectedPool?.role}
         poolRefreshKey={poolRefreshKey}
       />
     </>
@@ -162,7 +163,6 @@ function App() {
                 currentUser={currentUser}
                 pools={pools}
                 token={token}
-                userRole={currentUser?.role}
                 poolRefreshKey={poolRefreshKey}
                 onLogout={handleLogout}
                 onProfile={() => setShowProfile(true)}
