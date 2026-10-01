@@ -54,7 +54,8 @@ html, body {
 
   background-color: #f4f6fa;
   background-image: 
-    url("https://www.transparenttextures.com/patterns/cubes.png");
+    url("https://www.transparenttextures.com/patterns/cubes.png"),
+    linear-gradient(180deg, #ffffff 0%, #f4f6fa 60%, #e2e8f0 100%);
   background-attachment: fixed;
   background-size: 80px;
 }

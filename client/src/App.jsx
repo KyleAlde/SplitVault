@@ -205,6 +205,7 @@ function App() {
                 token={token}
                 currentUser={currentUser}
                 pools={pools}
+                onLogout={handleLogout}
                 onRefresh={() => refreshSessionData({ silent: true })}
               />
             ) : sessionStatus === 'loading' ? (

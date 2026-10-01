@@ -5,6 +5,7 @@ export default function Login({ onLogin }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [isRegistering, setIsRegistering] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,6 +17,10 @@ export default function Login({ onLogin }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        if (isRegistering && password !== confirmPassword) {
+            setError('Passwords do not match.');
+            return;
+        }
         setIsSubmitting(true);
         try {
             await onLogin({ ...(isRegistering ? { name } : {}), email, password }, isRegistering);
@@ -116,6 +121,27 @@ export default function Login({ onLogin }) {
                         </div>
                     </div>
 
+                    {isRegistering && (
+                        <div className="input-group">
+                            <label htmlFor="confirm-password">Confirm Password</label>
+                            <div className="input-wrapper password-wrapper">
+                                <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                                <input
+                                    id="confirm-password"
+                                    type={isPasswordVisible ? 'text' : 'password'}
+                                    autoComplete="new-password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    minLength={8}
+                                    required
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     {error && (
                         <p className="login-error">{error}</p>
                     )}
@@ -130,6 +156,7 @@ export default function Login({ onLogin }) {
                         onClick={(e) => {
                             e.preventDefault();
                             setIsRegistering(!isRegistering);
+                            setConfirmPassword('');
                             setError('');
                         }}
                     >

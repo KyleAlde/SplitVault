@@ -30,7 +30,7 @@ const getOrganizationName = (user) => {
     return 'Your Organization';
 };
 
-export default function HomePage({ token, currentUser, pools = [], onRefresh }) {
+export default function HomePage({ token, currentUser, pools = [], onRefresh, onLogout }) {
     const navigate = useNavigate();
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -51,7 +51,7 @@ export default function HomePage({ token, currentUser, pools = [], onRefresh }) 
                 <section className="hero-section">
                     <div className="hero-text-group">
                         <div className="hero-badge-row">
-                            <span className="hero-badge">SplitVault</span>
+                            <span className="hero-badge">Computer Science Society</span>
                             <span className="badge-dot">•</span>
                             <span className="hero-status">Active Session</span>
                         </div>
@@ -75,17 +75,22 @@ export default function HomePage({ token, currentUser, pools = [], onRefresh }) 
                         </div>
 
                         {pools.length === 0 ? (
-                            <div className="dashboard-card empty-state">
-                                <div className="empty-icon-wrapper">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                    </svg>
+                            <div className="pools-grid">
+                                <div className="dashboard-card empty-state">
+                                    <div className="empty-icon-wrapper">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                            <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                        </svg>
+                                    </div>
+                                    <h3>No Active Budget Pools</h3>
+                                    <p>You are not assigned to any budget pools yet.</p>
                                 </div>
-                                <h3>No Active Budget Pools</h3>
-                                <p>You are not assigned to any budget pools yet. Enter a Pool ID to request access.</p>
-                                <button className="btn-primary" onClick={() => setIsJoinModalOpen(true)}>
-                                    Join Existing Pool
-                                </button>
+
+                                <div className="dashboard-card create-card" onClick={() => setIsCreateModalOpen(true)}>
+                                    <div className="create-icon-plus">+</div>
+                                    <h4>Create New Budget Pool</h4>
+                                    <p>Set up allocations and invite contributors.</p>
+                                </div>
                             </div>
                         ) : (
                             <div className="pools-grid">
@@ -175,6 +180,17 @@ export default function HomePage({ token, currentUser, pools = [], onRefresh }) 
                         </div>
                     </section>
                 </main>
+
+                <footer className="home-footer">
+                    <button type="button" className="home-logout-button" onClick={onLogout}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M10 17l5-5-5-5" />
+                            <path d="M15 12H3" />
+                            <path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
+                        </svg>
+                        Log Out
+                    </button>
+                </footer>
             </div>
 
             <JoinPoolModal 
