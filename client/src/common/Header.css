@@ -115,15 +115,128 @@
     fill: var(--text-h);
 }
 
+.notification-wrapper {
+    position: relative;
+}
+
+.notification-btn {
+    position: relative;
+}
+
 .notification-dot {
     position: absolute;
     top: 2px;
     right: 2px;
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     background-color: var(--danger);
     border-radius: 50%;
     border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2);
+}
+
+.notification-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 12px);
+    width: min(360px, 78vw);
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.notification-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.notification-panel-header h3 {
+    margin: 0;
+    color: var(--text-h);
+    font-size: 16px;
+}
+
+.notification-mark-all {
+    border: none;
+    background: transparent;
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.notification-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.notification-item:hover {
+    background: rgba(99, 102, 241, 0.04);
+}
+
+.notification-item.unread {
+    background: rgba(37, 99, 235, 0.02);
+}
+
+.notification-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.notification-title {
+    color: var(--text-h);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.notification-unread-pill {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.notification-item p {
+    margin: 0;
+    color: var(--text-body);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.notification-item small {
+    display: block;
+    margin-top: 6px;
+    color: #64748B;
+    font-size: 11px;
+}
+
+.notification-empty {
+    padding: 18px 16px;
+    color: var(--text-body);
+    font-size: 14px;
 }
 
 .avatar-btn {

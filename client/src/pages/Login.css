@@ -76,6 +76,41 @@
     color: #0f172a;
 }
 
+.password-wrapper {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    border: none;
+    background: transparent;
+    color: #45639a;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 999px;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.password-toggle svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+    stroke: currentColor;
+    fill: none;
+}
+
+.password-toggle:hover {
+    background-color: rgba(69, 99, 154, 0.08);
+}
+
+.password-wrapper input {
+    padding-right: 60px;
+}
+
 /* Micro-interaction: Focus Rings & Icon Highlight */
 .input-group input:focus {
     outline: none;

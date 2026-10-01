@@ -8,6 +8,10 @@ export default function Login({ onLogin }) {
     const [error, setError] = useState('');
     const [isRegistering, setIsRegistering] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+    const revealPassword = () => setIsPasswordVisible(true);
+    const hidePassword = () => setIsPasswordVisible(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -71,20 +75,44 @@ export default function Login({ onLogin }) {
 
                     <div className="input-group">
                         <label htmlFor="login-password">Password</label>
-                        <div className="input-wrapper">
+                        <div className="input-wrapper password-wrapper">
                             <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                             </svg>
                             <input
                                 id="login-password"
-                                type="password"
+                                type={isPasswordVisible ? 'text' : 'password'}
                                 autoComplete={isRegistering ? 'new-password' : 'current-password'}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 minLength={isRegistering ? 8 : undefined}
                                 required
                             />
+                            <button
+                                type="button"
+                                className="password-toggle"
+                                aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+                                onMouseDown={revealPassword}
+                                onMouseUp={hidePassword}
+                                onMouseLeave={hidePassword}
+                                onTouchStart={revealPassword}
+                                onTouchEnd={hidePassword}
+                                onTouchCancel={hidePassword}
+                            >
+                                {isPasswordVisible ? (
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                        <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                                    </svg>
+                                ) : (
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                        <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                                        <path d="M4 4l16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                                    </svg>
+                                )}
+                            </button>
                         </div>
                     </div>
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import Header from './common/Header.jsx';
 import HomePage from './pages/HomePage.jsx';
@@ -35,6 +35,7 @@ function PoolDashboardWrapper({
     <>
       <Header
         currentUser={currentUser}
+        token={token}
         pools={pools}
         selectedPoolId={poolId}
         userRole={selectedPool?.role}
@@ -64,39 +65,91 @@ function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  useEffect(() => {
-    if (!token) return undefined;
+  const refreshSessionData = useCallback(async ({ silent = false } = {}) => {
+    if (!token) {
+      setCurrentUser(null);
+      setPools([]);
+      setSelectedPoolId('');
+      setSessionStatus('anonymous');
+      return;
+    }
 
-    let cancelled = false;
+    try {
+      if (!silent) {
+        setSessionStatus('loading');
+      }
 
-    Promise.all([
-      apiRequest('/me', { token }),
-      apiRequest('/pools', { token }),
-    ]).then(([profile, poolResponse]) => {
-      if (cancelled) return;
-      const availablePools = poolResponse.pools;
+      const [profile, poolResponse] = await Promise.all([
+        apiRequest('/me', { token }),
+        apiRequest('/pools', { token }),
+      ]);
+
+      const availablePools = poolResponse.pools || [];
+      const enrichedPools = await Promise.all(
+        availablePools.map(async (pool) => {
+          try {
+            const [dashboard, claims] = await Promise.all([
+              apiRequest(`/pools/${pool.id}/dashboard`, { token }),
+              apiRequest(`/pools/${pool.id}/claims`, { token }),
+            ]);
+
+            return {
+              ...pool,
+              totalSpent: dashboard.totalSpent || 0,
+              pendingApprovalsCount: (claims.claims || []).filter((claim) => claim.status === 'PENDING').length,
+            };
+          } catch {
+            return {
+              ...pool,
+              totalSpent: 0,
+              pendingApprovalsCount: 0,
+            };
+          }
+        })
+      );
+
       setCurrentUser(profile.user);
-      setPools(availablePools);
+      setPools(enrichedPools);
       setSelectedPoolId((currentId) =>
-        availablePools.some((pool) => pool.id === currentId)
+        enrichedPools.some((pool) => pool.id === currentId)
           ? currentId
-          : availablePools[0]?.id || '',
+          : enrichedPools[0]?.id || '',
       );
       setSessionStatus('authenticated');
-    }).catch(() => {
-      if (cancelled) return;
+    } catch {
       window.localStorage.removeItem(TOKEN_KEY);
       setToken(null);
       setSessionStatus('anonymous');
       setCurrentUser(null);
       setPools([]);
       setSelectedPoolId('');
-    });
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    refreshSessionData({ silent: true });
+
+    const handleRefresh = () => {
+      if (document.visibilityState === 'visible') {
+        refreshSessionData({ silent: true });
+      }
+    };
+
+    const refreshInterval = window.setInterval(() => {
+      refreshSessionData({ silent: true });
+    }, 30000);
+
+    window.addEventListener('focus', handleRefresh);
+    document.addEventListener('visibilitychange', handleRefresh);
 
     return () => {
-      cancelled = true;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('focus', handleRefresh);
+      document.removeEventListener('visibilitychange', handleRefresh);
     };
-  }, [token]);
+  }, [token, refreshSessionData]);
 
   const handleLogin = async (credentials, isRegistering) => {
     const endpoint = isRegistering ? '/auth/register' : '/auth/login';
@@ -121,11 +174,13 @@ function App() {
     setPools((currentPools) => [...currentPools, pool]);
     setSelectedPoolId(pool.id);
     setShowSettings(false);
+    refreshSessionData({ silent: true });
   };
 
   const handlePoolUpdated = (pool) => {
     setPools((currentPools) => currentPools.map((currentPool) => currentPool.id === pool.id ? pool : currentPool));
     setPoolRefreshKey((key) => key + 1);
+    refreshSessionData({ silent: true });
   };
 
   return (
@@ -146,7 +201,12 @@ function App() {
           path="/" 
           element={
             sessionStatus === 'authenticated' ? (
-              <HomePage token={token} />
+              <HomePage
+                token={token}
+                currentUser={currentUser}
+                pools={pools}
+                onRefresh={() => refreshSessionData({ silent: true })}
+              />
             ) : sessionStatus === 'loading' ? (
               <div className="app-loading">Connecting to SplitVault...</div>
             ) : (

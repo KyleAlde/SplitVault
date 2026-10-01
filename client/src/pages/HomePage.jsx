@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JoinPoolModal from '../components/JoinPoolModal';
 import CreatePoolModal from '../components/CreatePoolModal';
-import { apiRequest } from '../api.js';
 import './HomePage.css';
 
 const formatCurrency = (amount) => {
@@ -14,93 +13,34 @@ const formatCurrency = (amount) => {
     }).format(amount).replace('PHP', '₱');
 };
 
-export default function HomePage({ token }) {
+const getOrganizationName = (user) => {
+    const directName = user?.organizationName || user?.orgName || user?.organization;
+    if (directName && String(directName).trim()) {
+        return String(directName).trim();
+    }
+
+    const emailDomain = user?.email?.split('@')?.[1];
+    if (emailDomain) {
+        const fallback = emailDomain.split('.')[0].replace(/[-_]/g, ' ');
+        if (fallback) {
+            return fallback.replace(/\b\w/g, (letter) => letter.toUpperCase());
+        }
+    }
+
+    return 'Your Organization';
+};
+
+export default function HomePage({ token, currentUser, pools = [], onRefresh }) {
     const navigate = useNavigate();
-    const [currentUser, setCurrentUser] = useState(null);
-    const [pools, setPools] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-    const fetchHomeData = useCallback(async () => {
-        if (!token) return;
-
-        try {
-            setLoading(true);
-            setError(null);
-
-            // Fetch profile and user pools in parallel
-            const [userRes, poolsRes] = await Promise.all([
-                apiRequest('/me', { token }),
-                apiRequest('/pools', { token }),
-            ]);
-
-            const user = userRes.user;
-            const basePools = poolsRes.pools || [];
-
-            // Fetch dashboard spend details and pending claims count per pool
-            const enrichedPools = await Promise.all(
-                basePools.map(async (pool) => {
-                    try {
-                        const [dashRes, claimsRes] = await Promise.all([
-                            apiRequest(`/pools/${pool.id}/dashboard`, { token }),
-                            apiRequest(`/pools/${pool.id}/claims`, { token }),
-                        ]);
-
-                        const pendingCount = (claimsRes.claims || []).filter(
-                            (claim) => claim.status === 'PENDING'
-                        ).length;
-
-                        return {
-                            ...pool,
-                            totalSpent: dashRes.totalSpent || 0,
-                            pendingApprovalsCount: pendingCount,
-                        };
-                    } catch {
-                        return {
-                            ...pool,
-                            totalSpent: 0,
-                            pendingApprovalsCount: 0,
-                        };
-                    }
-                })
-            );
-
-            setCurrentUser(user);
-            setPools(enrichedPools);
-        } catch (err) {
-            console.error('Failed to load home page data:', err);
-            setError(err.message || 'Failed to fetch dashboard data');
-        } finally {
-            setLoading(false);
-        }
-    }, [token]);
-
-    useEffect(() => {
-        fetchHomeData();
-    }, [fetchHomeData]);
-
-    if (loading) {
+    if (!currentUser) {
         return <div className="app-loading">Loading your Vault dashboard...</div>;
     }
 
-    if (error) {
-        return (
-            <div className="home-layout">
-                <div className="content-wrapper" style={{ paddingTop: '80px', textAlign: 'center' }}>
-                    <h2>Unable to load dashboard</h2>
-                    <p style={{ color: 'var(--text-muted)' }}>{error}</p>
-                    <button className="btn-primary" onClick={fetchHomeData} style={{ marginTop: '16px' }}>
-                        Retry
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
     const firstName = currentUser?.name ? currentUser.name.split(' ')[0] : 'User';
-    const orgName = 'COMPUTER SCIENCE SOCIETY';
+    const orgName = getOrganizationName(currentUser);
 
     return (
         <div className="home-layout">
@@ -111,7 +51,7 @@ export default function HomePage({ token }) {
                 <section className="hero-section">
                     <div className="hero-text-group">
                         <div className="hero-badge-row">
-                            <span className="hero-badge">{orgName} VAULT</span>
+                            <span className="hero-badge">SplitVault</span>
                             <span className="badge-dot">•</span>
                             <span className="hero-status">Active Session</span>
                         </div>
@@ -242,7 +182,7 @@ export default function HomePage({ token }) {
                 token={token}
                 onClose={() => {
                     setIsJoinModalOpen(false);
-                    fetchHomeData();
+                    onRefresh?.();
                 }} 
             />
 
@@ -252,7 +192,7 @@ export default function HomePage({ token }) {
                 onClose={() => setIsCreateModalOpen(false)}
                 onPoolCreated={() => {
                     setIsCreateModalOpen(false);
-                    fetchHomeData();
+                    onRefresh?.();
                 }}
             />
         </div>

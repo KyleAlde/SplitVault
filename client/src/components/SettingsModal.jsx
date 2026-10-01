@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiRequest } from '../api.js';
 import './SettingsModal.css';
 
@@ -13,8 +13,43 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
     const [categoryColor, setCategoryColor] = useState('#425b9a');
     const [categoryNameError, setCategoryNameError] = useState('');
     const [categoryBudgetError, setCategoryBudgetError] = useState('');
+    const [pendingRequests, setPendingRequests] = useState([]);
+    const [isLoadingRequests, setIsLoadingRequests] = useState(false);
     const [error, setError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (!selectedPool || !token) {
+            setPendingRequests([]);
+            return undefined;
+        }
+
+        let isMounted = true;
+
+        async function loadPendingRequests() {
+            setIsLoadingRequests(true);
+            try {
+                const response = await apiRequest(`/pools/${selectedPool.id}/access-requests`, { token });
+                if (isMounted) {
+                    setPendingRequests(response.requests || []);
+                }
+            } catch (requestError) {
+                if (isMounted) {
+                    setPendingRequests([]);
+                    setError(requestError.message || 'Unable to load access requests.');
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoadingRequests(false);
+                }
+            }
+        }
+
+        loadPendingRequests();
+        return () => {
+            isMounted = false;
+        };
+    }, [selectedPool, token]);
 
     const savePool = async (event) => {
         event.preventDefault();
@@ -86,10 +121,22 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
         }
     };
 
+    const resolvePendingRequest = async (requestId, action) => {
+        setError('');
+        try {
+            await apiRequest(`/pools/${selectedPool.id}/access-requests/${requestId}/${action}`, {
+                token,
+                method: 'POST',
+            });
+            setPendingRequests((currentRequests) => currentRequests.filter((request) => request.id !== requestId));
+        } catch (requestError) {
+            setError(requestError.message || `Unable to ${action} this request.`);
+        }
+    };
+
     return (
         <div className="settings-modal-overlay">
             <div className="settings-modal">
-
                 <div className="settings-modal-header">
                     <div>
                         <h2>Pool Management</h2>
@@ -118,6 +165,45 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
                             </label>
                             <button className="settings-save-btn" type="submit" disabled={isSaving}>Save pool</button>
                         </form>
+
+                        <div className="settings-section settings-request-panel">
+                            <h3>Pending Access Requests</h3>
+                            {isLoadingRequests ? (
+                                <p className="settings-empty-state">Loading requests...</p>
+                            ) : pendingRequests.length === 0 ? (
+                                <p className="settings-empty-state">No pending requests for this pool.</p>
+                            ) : (
+                                <div className="settings-request-list">
+                                    {pendingRequests.map((request) => (
+                                        <div key={request.id} className="settings-request-item">
+                                            <div className="settings-request-meta">
+                                                <strong>{request.user?.name || 'Requested member'}</strong>
+                                                <span>{request.user?.email || 'Unknown email'}</span>
+                                            </div>
+                                            {request.requestNote && (
+                                                <p className="settings-request-note">“{request.requestNote}”</p>
+                                            )}
+                                            <div className="settings-request-actions">
+                                                <button
+                                                    type="button"
+                                                    className="settings-request-btn reject"
+                                                    onClick={() => resolvePendingRequest(request.id, 'reject')}
+                                                >
+                                                    Reject
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="settings-request-btn approve"
+                                                    onClick={() => resolvePendingRequest(request.id, 'approve')}
+                                                >
+                                                    Approve
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
                         <form className="settings-section" onSubmit={createCategory}>
                             <h3>Add Category</h3>
