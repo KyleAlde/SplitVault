@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JoinPoolModal from '../components/JoinPoolModal';
 import CreatePoolModal from '../components/CreatePoolModal';
+import SuccessModal from '../components/SuccessModal';
 import './HomePage.css';
 
 const formatCurrency = (amount) => {
@@ -34,6 +35,7 @@ export default function HomePage({ token, currentUser, pools = [], onRefresh, on
     const navigate = useNavigate();
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isCreateSuccessOpen, setIsCreateSuccessOpen] = useState(false);
 
     if (!currentUser) {
         return <div className="app-loading">Loading your Vault dashboard...</div>;
@@ -208,9 +210,17 @@ export default function HomePage({ token, currentUser, pools = [], onRefresh, on
                 onClose={() => setIsCreateModalOpen(false)}
                 onPoolCreated={() => {
                     setIsCreateModalOpen(false);
+                    setIsCreateSuccessOpen(true);
                     onRefresh?.();
                 }}
             />
+            {isCreateSuccessOpen && (
+                <SuccessModal
+                    title="Budget pool created"
+                    message="Your budget pool has been created successfully."
+                    onClose={() => setIsCreateSuccessOpen(false)}
+                />
+            )}
         </div>
     );
 }

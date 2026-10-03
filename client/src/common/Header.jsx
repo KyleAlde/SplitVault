@@ -6,13 +6,14 @@ import settingsButton from '../assets/settings_button.svg';
 import { apiRequest } from '../api.js';
 import './Header.css';
 
-export default function Header({ currentUser, token, pools, selectedPoolId, userRole, onPoolChange, onProfile, onSettings, onHome }) {
+export default function Header({ currentUser, token, pools, selectedPoolId, userRole, onPoolChange, onProfile, onSettings, onHome, onNotificationAction }) {
     const navigate = useNavigate();
     const [notifications, setNotifications] = useState([]);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
     const initials = currentUser?.name?.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?';
     const unreadCount = notifications.filter((notification) => !notification.read).length;
+    const unreadNotifications = notifications.filter((notification) => !notification.read);
 
     useEffect(() => {
         if (!token || !currentUser) {
@@ -86,6 +87,8 @@ export default function Header({ currentUser, token, pools, selectedPoolId, user
             await handleMarkRead(notification.id);
         }
 
+        onNotificationAction?.(notification);
+
         if (notification.link) {
             navigate(notification.link);
         }
@@ -149,11 +152,11 @@ export default function Header({ currentUser, token, pools, selectedPoolId, user
                                 )}
                             </div>
 
-                            {notifications.length === 0 ? (
+                            {unreadNotifications.length === 0 ? (
                                 <div className="notification-empty">No notifications yet.</div>
                             ) : (
                                 <div className="notification-list">
-                                    {notifications.slice(0, 8).map((notification) => (
+                                    {unreadNotifications.slice(0, 8).map((notification) => (
                                         <button
                                             key={notification.id}
                                             type="button"

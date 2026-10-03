@@ -1,4 +1,12 @@
-import React from 'react';
+import { useMemo, useState } from 'react';
+
+const SORT_FIELDS = [
+    { key: 'title', label: 'Description' },
+    { key: 'claimant', label: 'Claimant' },
+    { key: 'category', label: 'Category' },
+    { key: 'amount', label: 'Amount' },
+    { key: 'date', label: 'Date' },
+];
 
 export default function FullLedgerModal({
     isOpen,
@@ -10,8 +18,39 @@ export default function FullLedgerModal({
     setModalSearch,
     modalCategory,
     setModalCategory,
-    renderTableRows
+    renderTableRows,
 }) {
+    const [sort, setSort] = useState({ key: 'date', direction: 'desc' });
+    const sortedClaims = useMemo(() => {
+        const getValue = (claim) => {
+            if (sort.key === 'amount') return Number(claim.amount) || 0;
+            if (sort.key === 'date') return new Date(claim.incurredAt || claim.date).getTime() || 0;
+            return String(claim[sort.key] || '').toLocaleLowerCase();
+        };
+
+        return modalClaims
+            .map((claim, index) => ({ claim, index }))
+            .sort((first, second) => {
+                const firstValue = getValue(first.claim);
+                const secondValue = getValue(second.claim);
+                const comparison = typeof firstValue === 'number'
+                    ? firstValue - secondValue
+                    : firstValue.localeCompare(secondValue);
+
+                return comparison === 0
+                    ? first.index - second.index
+                    : comparison * (sort.direction === 'asc' ? 1 : -1);
+            })
+            .map(({ claim }) => claim);
+    }, [modalClaims, sort]);
+
+    const handleSort = (key) => {
+        setSort((currentSort) => ({
+            key,
+            direction: currentSort.key === key && currentSort.direction === 'asc' ? 'desc' : 'asc',
+        }));
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -55,15 +94,29 @@ export default function FullLedgerModal({
                     <table className="ledger-table">
                         <thead>
                             <tr>
-                                <th>Description</th>
-                                <th>Claimant</th>
-                                <th>Category</th>
-                                <th className="text-right">Amount</th>
-                                <th className="text-right">Date</th>
+                                {SORT_FIELDS.map(({ key, label }) => (
+                                    <th
+                                        key={key}
+                                        className={key === 'amount' || key === 'date' ? 'text-right' : undefined}
+                                        aria-sort={sort.key === key
+                                            ? sort.direction === 'asc' ? 'ascending' : 'descending'
+                                            : 'none'}
+                                    >
+                                        <button
+                                            type="button"
+                                            className="ledger-sort-button"
+                                            aria-label={`Sort by ${label}`}
+                                            aria-pressed={sort.key === key}
+                                            onClick={() => handleSort(key)}
+                                        >
+                                            {label}{sort.key === key ? (sort.direction === 'asc' ? ' ↑' : ' ↓') : ''}
+                                        </button>
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>
-                            {renderTableRows(modalClaims)}
+                            {renderTableRows(sortedClaims)}
                         </tbody>
                     </table>
                 </div>

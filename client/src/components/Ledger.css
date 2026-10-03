@@ -103,6 +103,22 @@
 	border-bottom: 1px solid var(--border);
 }
 
+.ledger-sort-button {
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
+	cursor: pointer;
+}
+
+.ledger-sort-button:focus-visible {
+	outline: 2px solid var(--text-h);
+	outline-offset: 3px;
+}
+
 .ledger-table td {
 	padding: 16px 12px;
 	border-bottom: 1px solid var(--border);

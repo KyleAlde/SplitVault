@@ -18,6 +18,9 @@ function PoolDashboardWrapper({
   onLogout,
   onProfile,
   onSettings,
+  onReviewPending,
+  reviewPoolId,
+  onReviewOpened,
 }) {
   const { poolId } = useParams();
   const navigate = useNavigate();
@@ -31,6 +34,17 @@ function PoolDashboardWrapper({
     navigate('/');
   };
 
+  const handleNotificationAction = (notification) => {
+    const poolId = notification.link?.match(/^\/pool\/([^/]+)$/)?.[1];
+    if (!poolId) return;
+
+    if (notification.type === 'POOL_ACCESS_REQUEST_SUBMITTED') {
+      onSettings(poolId);
+    } else if (notification.type === 'CLAIM_SUBMITTED') {
+      onReviewPending(poolId);
+    }
+  };
+
   return (
     <>
       <Header
@@ -42,14 +56,17 @@ function PoolDashboardWrapper({
         onPoolChange={handlePoolChange}
         onLogout={onLogout}
         onProfile={onProfile}
-        onSettings={onSettings}
+        onSettings={() => onSettings(poolId)}
         onHome={handleHome}
+        onNotificationAction={handleNotificationAction}
       />
       <DashboardPage
         token={token}
         selectedPoolId={poolId}
         userRole={selectedPool?.role}
         poolRefreshKey={poolRefreshKey}
+        openReviewPoolId={reviewPoolId}
+        onReviewOpened={onReviewOpened}
       />
     </>
   );
@@ -64,6 +81,8 @@ function App() {
   const [poolRefreshKey, setPoolRefreshKey] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsPoolId, setSettingsPoolId] = useState('');
+  const [reviewPoolId, setReviewPoolId] = useState(null);
 
   const refreshSessionData = useCallback(async ({ silent = false } = {}) => {
     if (!token) {
@@ -227,7 +246,13 @@ function App() {
                 poolRefreshKey={poolRefreshKey}
                 onLogout={handleLogout}
                 onProfile={() => setShowProfile(true)}
-                onSettings={() => setShowSettings(true)}
+                onSettings={(poolId) => {
+                  setSettingsPoolId(poolId || selectedPoolId);
+                  setShowSettings(true);
+                }}
+                onReviewPending={setReviewPoolId}
+                reviewPoolId={reviewPoolId}
+                onReviewOpened={() => setReviewPoolId(null)}
               />
             ) : sessionStatus === 'loading' ? (
               <div className="app-loading">Connecting to SplitVault...</div>
@@ -248,9 +273,9 @@ function App() {
 
       {sessionStatus === 'authenticated' && showSettings && (
         <SettingsModal
-          key={selectedPoolId}
+          key={settingsPoolId}
           token={token}
-          selectedPool={pools.find((pool) => pool.id === selectedPoolId)}
+          selectedPool={pools.find((pool) => pool.id === settingsPoolId)}
           onClose={() => setShowSettings(false)}
           onPoolCreated={handlePoolCreated}
           onPoolUpdated={handlePoolUpdated}

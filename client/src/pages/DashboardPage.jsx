@@ -7,6 +7,7 @@ import ActionCenter from '../components/ActionCenter';
 import Ledger from '../components/Ledger';
 import ReviewPendingModal from '../components/modals/ReviewPendingModal';
 import SubmitExpenseModal from '../components/SubmitExpenseModal';
+import SuccessModal from '../components/SuccessModal';
 import { apiRequest } from '../api.js';
 
 const STATUS_LABELS = { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected' };
@@ -15,7 +16,14 @@ function formatDate(value) {
     return value ? new Date(value).toLocaleDateString() : '—';
 }
 
-export default function DashboardPage({ token, selectedPoolId, userRole, poolRefreshKey }) {
+export default function DashboardPage({
+    token,
+    selectedPoolId,
+    userRole,
+    poolRefreshKey,
+    openReviewPoolId,
+    onReviewOpened,
+}) {
     const { poolId: urlPoolId } = useParams();
     const effectivePoolId = urlPoolId || selectedPoolId;
 
@@ -27,6 +35,7 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
     const [actionError, setActionError] = useState('');
     const [isUpdatingClaim, setIsUpdatingClaim] = useState(false);
     const [reloadKey, setReloadKey] = useState(0);
+    const [success, setSuccess] = useState(null);
 
     useEffect(() => {
         if (!effectivePoolId) {
@@ -69,6 +78,8 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
     const displayedPool = activePool?.id === effectivePoolId ? activePool : null;
     const displayedError = loadError?.poolId === effectivePoolId ? loadError.message : '';
     const isAdmin = userRole === 'ADMIN';
+    const isNotificationReviewOpen = openReviewPoolId === effectivePoolId;
+    const isReviewModalVisible = isReviewModalOpen || isNotificationReviewOpen;
     const pendingClaims = displayedPool?.claims?.filter((claim) => claim.status === 'Pending') || [];
     const handleSubmitExpense = () => setIsSubmitModalOpen(true);
 
@@ -92,6 +103,14 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
                 body: reviewNote ? { reviewNote } : {},
             });
             setReloadKey((key) => key + 1);
+            if (decision === 'approve') {
+                setSuccess({
+                    title: 'Expense claim approved',
+                    message: 'The expense claim has been approved successfully.',
+                });
+                setIsReviewModalOpen(false);
+                if (isNotificationReviewOpen) onReviewOpened?.();
+            }
             return true;
         } catch (error) {
             setActionError(error.message || 'Unable to update this claim.');
@@ -111,6 +130,10 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
             body: formData,
         });
         setIsSubmitModalOpen(false);
+        setSuccess({
+            title: 'Expense claim submitted',
+            message: 'Your expense claim has been submitted successfully and is pending review.',
+        });
         setReloadKey((key) => key + 1);
     };
 
@@ -145,14 +168,17 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
                 </div>
             </>}
 
-            {isAdmin && isReviewModalOpen && <ReviewPendingModal
-                isOpen={isReviewModalOpen}
-                onClose={() => setIsReviewModalOpen(false)}
+            {isAdmin && isReviewModalVisible && <ReviewPendingModal
+                isOpen={isReviewModalVisible}
+                onClose={() => {
+                    setIsReviewModalOpen(false);
+                    if (isNotificationReviewOpen) onReviewOpened();
+                }}
                 pendingClaims={pendingClaims}
                 categories={displayedPool?.categories || []}
                 onApprove={(claimId) => handleReview(claimId, 'approve')}
                 onReject={(claimId, reason) => handleReview(claimId, 'reject', reason)}
-                initialSelectedId={initialClaimId}
+                initialSelectedId={isNotificationReviewOpen ? null : initialClaimId}
                 activePoolName={displayedPool?.name}
                 isUpdating={isUpdatingClaim}
                 errorMessage={actionError}
@@ -166,6 +192,13 @@ export default function DashboardPage({ token, selectedPoolId, userRole, poolRef
                 remainingBalance={displayedPool?.remainingBalance}
                 onSubmit={handleSubmitClaim}
             />
+            {success && (
+                <SuccessModal
+                    title={success.title}
+                    message={success.message}
+                    onClose={() => setSuccess(null)}
+                />
+            )}
         </div>
     );
 }
