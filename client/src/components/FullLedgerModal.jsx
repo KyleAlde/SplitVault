@@ -123,13 +123,6 @@ export default function FullLedgerModal({
 
                 <div className="modal-footer">
                     <span className="sub-text">Showing {modalClaims.length} of {approvedClaimsLength} claims</span>
-                    <button 
-                        type="button" 
-                        className="btn-close-secondary"
-                        onClick={onClose}
-                    >
-                        Close
-                    </button>
                 </div>
             </div>
         </div>

@@ -573,6 +573,29 @@ app.get('/api/pools/:poolId/access-requests', authenticate, async (req, res, nex
   }
 });
 
+app.get('/api/pools/:poolId/members', authenticate, async (req, res, next) => {
+  try {
+    const { poolId } = req.params;
+    validateId(poolId, 'pool ID');
+    await requirePoolAdmin(poolId, req.user.id);
+    const members = await prisma.budgetPoolMember.findMany({
+      where: { poolId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: { joinedAt: 'asc' },
+    });
+    res.json({
+      members: members.map((member) => ({
+        userId: member.userId,
+        role: member.role,
+        joinedAt: member.joinedAt,
+        user: member.user,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 async function resolveAccessRequest(req, res, next, status) {
   try {
     const { poolId, requestId } = req.params;

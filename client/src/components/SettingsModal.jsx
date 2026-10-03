@@ -15,12 +15,15 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
     const [categoryBudgetError, setCategoryBudgetError] = useState('');
     const [pendingRequests, setPendingRequests] = useState([]);
     const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+    const [poolMembers, setPoolMembers] = useState([]);
+    const [isLoadingMembers, setIsLoadingMembers] = useState(false);
     const [error, setError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (!selectedPool || !token) {
             setPendingRequests([]);
+            setPoolMembers([]);
             return undefined;
         }
 
@@ -45,7 +48,27 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
             }
         }
 
+        async function loadPoolMembers() {
+            setIsLoadingMembers(true);
+            try {
+                const response = await apiRequest(`/pools/${selectedPool.id}/members`, { token });
+                if (isMounted) {
+                    setPoolMembers(response.members || []);
+                }
+            } catch (requestError) {
+                if (isMounted) {
+                    setPoolMembers([]);
+                    setError(requestError.message || 'Unable to load pool members.');
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoadingMembers(false);
+                }
+            }
+        }
+
         loadPendingRequests();
+        loadPoolMembers();
         return () => {
             isMounted = false;
         };
@@ -165,6 +188,29 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolCrea
                             </label>
                             <button className="settings-save-btn" type="submit" disabled={isSaving}>Save pool</button>
                         </form>
+
+                        <section className="settings-section settings-members-panel">
+                            <h3>Pool Members</h3>
+                            {isLoadingMembers ? (
+                                <p className="settings-empty-state">Loading members...</p>
+                            ) : poolMembers.length === 0 ? (
+                                <p className="settings-empty-state">No members found for this pool.</p>
+                            ) : (
+                                <div className="settings-member-list">
+                                    {poolMembers.map((member) => (
+                                        <div key={member.userId} className="settings-member-item">
+                                            <div className="settings-request-meta">
+                                                <strong>{member.user?.name || 'Pool member'}</strong>
+                                                <span>{member.user?.email || 'Unknown email'}</span>
+                                            </div>
+                                            <span className={`settings-member-role ${member.role === 'ADMIN' ? 'admin' : ''}`}>
+                                                {member.role === 'ADMIN' ? 'Admin' : 'Contributor'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
 
                         <div className="settings-section settings-request-panel">
                             <h3>Pending Access Requests</h3>

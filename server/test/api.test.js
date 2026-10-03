@@ -134,6 +134,59 @@ test('pool listing exposes each user pool-relative role', async () => {
   });
 });
 
+test('pool admins can list members for their pool', async () => {
+  const joinedAt = new Date('2026-09-29T00:00:00.000Z');
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+    [prisma.budgetPoolMember, 'findMany', async ({ where }) => {
+      assert.deepEqual(where, { poolId: TEST_POOL_ID });
+      return [{
+        poolId: TEST_POOL_ID,
+        userId: TEST_USER_ID,
+        role: 'ADMIN',
+        joinedAt,
+        user: { id: TEST_USER_ID, name: 'Test User', email: 'test@example.com' },
+      }, {
+        poolId: TEST_POOL_ID,
+        userId: TEST_ADMIN_ID,
+        role: 'CONTRIBUTOR',
+        joinedAt,
+        user: { id: TEST_ADMIN_ID, name: 'Pool Contributor', email: 'member@example.com' },
+      }];
+    }],
+  ], async () => {
+    const response = await request(app)
+      .get(`/api/pools/${TEST_POOL_ID}/members`)
+      .set('Authorization', authHeader());
+    assert.equal(response.status, 200);
+    assert.deepEqual(response.body.members, [{
+      userId: TEST_USER_ID,
+      role: 'ADMIN',
+      joinedAt: joinedAt.toISOString(),
+      user: { id: TEST_USER_ID, name: 'Test User', email: 'test@example.com' },
+    }, {
+      userId: TEST_ADMIN_ID,
+      role: 'CONTRIBUTOR',
+      joinedAt: joinedAt.toISOString(),
+      user: { id: TEST_ADMIN_ID, name: 'Pool Contributor', email: 'member@example.com' },
+    }]);
+  });
+});
+
+test('pool member list requires pool-admin membership', async () => {
+  await withPrismaMocks([
+    ...authMocks('ADMIN'),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'CONTRIBUTOR' })],
+  ], async () => {
+    const response = await request(app)
+      .get(`/api/pools/${TEST_POOL_ID}/members`)
+      .set('Authorization', authHeader());
+    assert.equal(response.status, 403);
+    assert.deepEqual(response.body, { error: 'Administrator access required' });
+  });
+});
+
 test('claim review authorization follows the user pool membership role', async () => {
   const claim = {
     id: TEST_REQUEST_ID,

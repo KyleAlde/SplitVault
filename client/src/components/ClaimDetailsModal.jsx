@@ -137,13 +137,6 @@ export default function ClaimDetailsModal({
                 {/* Modal Footer */}
                 <div className="modal-footer">
                     <span className="sub-text">Claim ID: {claim.id}</span>
-                    <button 
-                        type="button" 
-                        className="btn-close-secondary"
-                        onClick={onClose}
-                    >
-                        Close
-                    </button>
                 </div>
 
             </div>
