@@ -30,6 +30,17 @@
 	gap: 4px;
 }
 
+.donut-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.category-details-button {
+	flex: 0 0 auto;
+}
+
 .card-header h3 {
 	margin: 0;
 	font-size: 24px;
@@ -132,4 +143,11 @@
 	color: var(--text);
 	width: 28px;
 	text-align: right;
+}
+
+@media (max-width: 620px) {
+	.donut-card-header {
+		align-items: flex-start;
+		flex-direction: column;
+	}
 }

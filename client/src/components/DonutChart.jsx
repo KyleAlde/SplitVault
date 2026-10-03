@@ -1,8 +1,12 @@
-import React from 'react';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import './DonutChart.css';
 
-export default function DonutChart({ categories = [], totalBudget = 0, totalSpent = 0 }) {
+export default function DonutChart({
+	categories = [],
+	totalBudget = 0,
+	totalSpent = 0,
+	onViewCategoryDetails,
+}) {
 	const remainingBalance = Math.max(0, totalBudget - totalSpent);
 
 	const chartData = [
@@ -31,9 +35,20 @@ export default function DonutChart({ categories = [], totalBudget = 0, totalSpen
 
 	return (
 		<div className="donut-card">
-			<div className="card-header">
-				<h3>Category & Budget Breakdown</h3>
-				<span className="sub-text">Active Pool Allocation & Disbursements</span>
+			<div className="donut-card-header">
+				<div className="card-header">
+					<h3>Category & Budget Breakdown</h3>
+					<span className="sub-text">Active Pool Allocation & Disbursements</span>
+				</div>
+				{onViewCategoryDetails && (
+					<button
+						type="button"
+						className="btn-view-all-ledger category-details-button"
+						onClick={onViewCategoryDetails}
+					>
+						View Category Details
+					</button>
+				)}
 			</div>
 
 			<div className="chart-body">

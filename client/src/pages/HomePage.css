@@ -2,8 +2,9 @@
 
 :root {
     --bg-page: #f4f6fa;
-    --brand-primary: #4f46e5;
-    --brand-primary-hover: #4338ca;
+    --brand-primary: #2563eb;
+    --brand-primary-hover: #1d4ed8;
+    --brand-accent: #0284c7;
     --text-slate: #0f172a;
     --text-muted: #64748b;
     --card-border: #e2e8f0;
@@ -70,10 +71,10 @@
     font-weight: 700;
     letter-spacing: 1.5px;
     color: var(--brand-primary);
-    background: #eef2ff;
+    background: #eff6ff;
     padding: 5px 12px;
     border-radius: 20px;
-    border: 1px solid #c7d2fe;
+    border: 1px solid #bfdbfe;
 }
 
 .badge-dot {
@@ -141,7 +142,7 @@
     justify-content: center;
     margin-bottom: 16px;
     border-radius: 14px;
-    background: #eef2ff;
+    background: #eff6ff;
     color: var(--brand-primary);
 }
 
@@ -161,7 +162,7 @@
 }
 
 .text-slate { color: var(--text-slate); }
-.text-brand { color: var(--brand-primary); }
+.text-brand { color: var(--brand-accent); }
 
 /* Section Header */
 .section-header {
@@ -331,7 +332,7 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: #eef2ff;
+    background: #eff6ff;
     color: var(--brand-primary);
     display: flex;
     align-items: center;
@@ -374,7 +375,7 @@
 .key-icon-badge {
     width: 48px;
     height: 48px;
-    background: #eef2ff;
+    background: #eff6ff;
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -448,7 +449,7 @@
     font-size: 14px;
     cursor: pointer;
     transition: background 0.2s ease, transform 0.1s ease;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 .btn-primary:hover { background: var(--brand-primary-hover); }
 .btn-primary:active { transform: scale(0.98); }
@@ -514,7 +515,7 @@
 .standard-input:focus {
     outline: none;
     border-color: var(--brand-primary);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .modal-actions {

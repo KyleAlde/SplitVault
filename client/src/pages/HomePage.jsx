@@ -131,7 +131,7 @@ export default function HomePage({ token, currentUser, pools = [], onRefresh, on
                                                                 width: `${spentPercentage}%`,
                                                                 background: spentPercentage > 85 
                                                                     ? 'linear-gradient(90deg, #f59e0b, #ef4444)' 
-                                                                    : 'linear-gradient(90deg, #4f46e5, #06b6d4)'
+                                                                    : 'linear-gradient(90deg, #1e40af, #3b82f6)'
                                                             }}
                                                         />
                                                     </div>

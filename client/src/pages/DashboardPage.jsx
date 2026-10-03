@@ -8,6 +8,7 @@ import Ledger from '../components/Ledger';
 import ReviewPendingModal from '../components/modals/ReviewPendingModal';
 import SubmitExpenseModal from '../components/SubmitExpenseModal';
 import SuccessModal from '../components/SuccessModal';
+import CategoryBreakdownModal from '../components/CategoryBreakdownModal';
 import { apiRequest, getApiErrorMessage } from '../api.js';
 
 const STATUS_LABELS = { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected' };
@@ -29,6 +30,7 @@ export default function DashboardPage({
 
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+    const [isCategoryBreakdownOpen, setIsCategoryBreakdownOpen] = useState(false);
     const [initialClaimId, setInitialClaimId] = useState(null);
     const [activePool, setActivePool] = useState(null);
     const [loadError, setLoadError] = useState(null);
@@ -150,6 +152,7 @@ export default function DashboardPage({
                         categories={displayedPool.categories || []}
                         totalBudget={displayedPool.totalBudget || 0}
                         totalSpent={displayedPool.totalSpent || 0}
+                        onViewCategoryDetails={() => setIsCategoryBreakdownOpen(true)}
                     />
                     <Ledger
                         claims={displayedPool.claims || []}
@@ -191,6 +194,19 @@ export default function DashboardPage({
                 categories={displayedPool?.categories || []}
                 remainingBalance={displayedPool?.remainingBalance}
                 onSubmit={handleSubmitClaim}
+            />
+            <CategoryBreakdownModal
+                isOpen={isCategoryBreakdownOpen}
+                onClose={() => setIsCategoryBreakdownOpen(false)}
+                poolName={displayedPool?.name || ''}
+                totalBudget={displayedPool?.totalBudget || 0}
+                categories={(displayedPool?.categories || []).map((category) => ({
+                    id: category.id,
+                    name: category.name,
+                    allocated: category.budget,
+                    spent: category.totalSpent ?? category.spent ?? 0,
+                    color: category.color,
+                }))}
             />
             {success && (
                 <SuccessModal
