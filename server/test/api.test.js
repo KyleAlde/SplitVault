@@ -140,7 +140,13 @@ test('pool budget can be increased and saves with pool details', async () => {
     [prisma.expenseClaim, 'aggregate', async () => ({ _sum: { amount: 50 } })],
     [prisma.budgetPool, 'update', async ({ data }) => {
       updatedData = data;
-      return { id: TEST_POOL_ID, name: 'Pool', description: null, totalBudget: data.totalBudget };
+      return {
+        id: TEST_POOL_ID,
+        name: 'Pool',
+        description: null,
+        organizationName: data.organizationName,
+        totalBudget: data.totalBudget,
+      };
     }],
     [prisma.auditLog, 'create', async () => ({})],
     [prisma, '$transaction', async (callback) => callback(prisma)],
@@ -148,10 +154,11 @@ test('pool budget can be increased and saves with pool details', async () => {
     const response = await request(app)
       .patch(`/api/pools/${TEST_POOL_ID}`)
       .set('Authorization', authHeader())
-      .send({ totalBudget: 125 });
+      .send({ totalBudget: 125, organizationName: '  NU CS Society  ' });
     assert.equal(response.status, 200);
     assert.equal(response.body.pool.totalBudget, 125);
-    assert.deepEqual(updatedData, { totalBudget: 125 });
+    assert.equal(response.body.pool.organizationName, 'NU CS Society');
+    assert.deepEqual(updatedData, { totalBudget: 125, organizationName: 'NU CS Society' });
   });
 });
 
@@ -170,9 +177,14 @@ test('pool creation grants the creator pool-admin membership', async () => {
     const response = await request(app)
       .post('/api/pools')
       .set('Authorization', authHeader())
-      .send({ name: '  New pool  ', totalBudget: 100 });
+      .send({
+        name: '  New pool  ',
+        organizationName: '  NU CS Society  ',
+        totalBudget: 100,
+      });
     assert.equal(response.status, 201);
     assert.equal(response.body.pool.name, 'New pool');
+    assert.equal(response.body.pool.organizationName, 'NU CS Society');
     assert.deepEqual(createdMember, {
       poolId: TEST_POOL_ID,
       userId: TEST_USER_ID,
@@ -216,6 +228,7 @@ test('pool listing exposes each user pool-relative role', async () => {
       id: TEST_POOL_ID,
       name: 'Scoped pool',
       description: null,
+      organizationName: 'NU CS Society',
       totalBudget: 100,
       members: [{ role: 'ADMIN' }],
     }]],
@@ -225,6 +238,7 @@ test('pool listing exposes each user pool-relative role', async () => {
       .set('Authorization', authHeader());
     assert.equal(response.status, 200);
     assert.equal(response.body.pools[0].role, 'ADMIN');
+    assert.equal(response.body.pools[0].organizationName, 'NU CS Society');
   });
 });
 

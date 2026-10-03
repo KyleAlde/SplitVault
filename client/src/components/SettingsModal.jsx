@@ -18,6 +18,7 @@ function formatPHP(value) {
 export default function SettingsModal({ token, selectedPool, onClose, onPoolUpdated }) {
     const [poolName, setPoolName] = useState(selectedPool?.name || '');
     const [description, setDescription] = useState(selectedPool?.description || '');
+    const [organizationName, setOrganizationName] = useState(selectedPool?.organizationName || '');
     const [totalBudget, setTotalBudget] = useState(
         selectedPool?.totalBudget === undefined ? '' : String(selectedPool.totalBudget),
     );
@@ -86,6 +87,7 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolUpda
                 if (isMounted) {
                     setPoolDetails(response.pool);
                     setTotalBudget(String(response.pool.totalBudget));
+                    setOrganizationName(response.pool.organizationName || '');
                 }
             } catch (requestError) {
                 if (isMounted) {
@@ -112,10 +114,16 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolUpda
             const response = await apiRequest(`/pools/${selectedPool.id}`, {
                 token,
                 method: 'PATCH',
-                body: { name: poolName, description, totalBudget: Number(totalBudget) },
+                body: {
+                    name: poolName,
+                    description,
+                    organizationName: organizationName.trim() || null,
+                    totalBudget: Number(totalBudget),
+                },
             });
             setPoolName(response.pool.name);
             setDescription(response.pool.description || '');
+            setOrganizationName(response.pool.organizationName || '');
             setTotalBudget(String(response.pool.totalBudget));
             setPoolDetails((current) => current && ({ ...current, ...response.pool }));
             onPoolUpdated(response.pool);
@@ -270,6 +278,15 @@ export default function SettingsModal({ token, selectedPool, onClose, onPoolUpda
                             <label className="settings-field">
                                 Description
                                 <textarea value={description || ''} onChange={(event) => setDescription(event.target.value)} rows={2} />
+                            </label>
+                            <label className="settings-field">
+                                Organization
+                                <input
+                                    type="text"
+                                    value={organizationName}
+                                    onChange={(event) => setOrganizationName(event.target.value)}
+                                    placeholder="e.g., Computer Science Society"
+                                />
                             </label>
                             <button className="settings-save-btn" type="submit" disabled={isSaving || !poolDetails || Boolean(poolBudgetValidationError)}>Save</button>
                         </form>

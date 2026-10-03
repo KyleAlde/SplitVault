@@ -18,6 +18,7 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
     // Pool details state
     const [newPoolName, setNewPoolName] = useState('');
     const [newPoolDescription, setNewPoolDescription] = useState('');
+    const [organizationName, setOrganizationName] = useState('');
     const [newPoolBudget, setNewPoolBudget] = useState('');
 
     // Category form state
@@ -95,6 +96,7 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
                 body: {
                     name: newPoolName,
                     description: newPoolDescription,
+                    organizationName: organizationName.trim() || null,
                     totalBudget: poolBudget,
                     categories: categories.map(({ name, budget, color }) => ({
                         name,
@@ -107,6 +109,7 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
             // Reset modal state
             setNewPoolName('');
             setNewPoolDescription('');
+            setOrganizationName('');
             setNewPoolBudget('');
             setCategories([]);
 
@@ -169,6 +172,17 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
                                 onChange={(event) => setNewPoolDescription(event.target.value)}
                                 placeholder="Purpose or notes for this pool"
                                 rows={2}
+                            />
+                        </div>
+
+                        <div className="create-pool-field">
+                            <label htmlFor="pool-organization-name">Organization (Optional)</label>
+                            <input
+                                id="pool-organization-name"
+                                type="text"
+                                value={organizationName}
+                                onChange={(event) => setOrganizationName(event.target.value)}
+                                placeholder="e.g., Computer Science Society"
                             />
                         </div>
 

@@ -64,6 +64,7 @@ const poolView = (pool) => ({
   id: pool.id,
   name: pool.name,
   description: pool.description,
+  organizationName: pool.organizationName ?? null,
   totalBudget: toNumber(pool.totalBudget),
 });
 
@@ -437,12 +438,15 @@ app.get('/api/pools/:poolId', authenticate, async (req, res, next) => {
 
 app.post('/api/pools', authenticate, async (req, res, next) => {
   try {
-    const { name, description, totalBudget } = req.body || {};
+    const { name, description, organizationName, totalBudget } = req.body || {};
     const budget = parsePositiveNumber(totalBudget, 'Total budget');
     const trimmedName = sanitizeText(name, { fieldName: 'Pool name', maxLength: 120 });
     const trimmedDescription = typeof description === 'string'
       ? description.trim().slice(0, 1000) || null
       : null;
+    const trimmedOrganizationName = organizationName == null
+      ? null
+      : sanitizeText(organizationName, { fieldName: 'Organization name', allowBlank: true }) || null;
 
     const categories = validatePoolCategories(req.body?.categories);
     const totalCategoryBudgetCents = categories.reduce(
@@ -462,6 +466,7 @@ app.post('/api/pools', authenticate, async (req, res, next) => {
         data: {
           name: trimmedName,
           description: trimmedDescription,
+          organizationName: trimmedOrganizationName,
           totalBudget: budget,
         },
       });
@@ -497,6 +502,16 @@ app.patch('/api/pools/:poolId', authenticate, async (req, res, next) => {
         data.description = req.body.description.trim().slice(0, 1000) || null;
       } else {
         throw new ApiError(400, 'Pool description must be a string');
+      }
+    }
+    if ('organizationName' in req.body) {
+      if (req.body.organizationName === null || req.body.organizationName === undefined) {
+        data.organizationName = null;
+      } else {
+        data.organizationName = sanitizeText(req.body.organizationName, {
+          fieldName: 'Organization name',
+          allowBlank: true,
+        }) || null;
       }
     }
     if ('totalBudget' in req.body) {

@@ -28,6 +28,7 @@ const pools = [
     id: '00000000-0000-0000-0000-000000000001',
     name: 'Annual Hackathon 2026',
     description: 'Development pool for the annual organization hackathon.',
+    organizationName: 'NU CS Society',
     totalBudget: 150000,
     categories: [
       { name: 'Venue & Catering', budget: 60000, color: '#059669' },
@@ -58,6 +59,7 @@ const pools = [
     id: '00000000-0000-0000-0000-000000000002',
     name: 'General Membership Assembly',
     description: 'Budget pool for the general membership assembly.',
+    organizationName: 'NU CS Society',
     totalBudget: 45000,
     categories: [
       { name: 'Food & Refreshments', budget: 25000, color: '#059669' },
@@ -81,6 +83,7 @@ const pools = [
     id: '00000000-0000-0000-0000-000000000003',
     name: 'Tech Workshops & Bootcamps',
     description: 'Budget pool for technology workshops and bootcamps.',
+    organizationName: 'NU CS Society',
     totalBudget: 35000,
     categories: [
       { name: 'Software & Hosting', budget: 15000, color: '#425b9a' },
@@ -118,12 +121,14 @@ async function main() {
       update: {
         name: poolFixture.name,
         description: poolFixture.description,
+        organizationName: poolFixture.organizationName,
         totalBudget: poolFixture.totalBudget,
       },
       create: {
         id: poolFixture.id,
         name: poolFixture.name,
         description: poolFixture.description,
+        organizationName: poolFixture.organizationName,
         totalBudget: poolFixture.totalBudget,
       },
     });

@@ -14,23 +14,6 @@ const formatCurrency = (amount) => {
     }).format(amount).replace('PHP', '₱');
 };
 
-const getOrganizationName = (user) => {
-    const directName = user?.organizationName || user?.orgName || user?.organization;
-    if (directName && String(directName).trim()) {
-        return String(directName).trim();
-    }
-
-    const emailDomain = user?.email?.split('@')?.[1];
-    if (emailDomain) {
-        const fallback = emailDomain.split('.')[0].replace(/[-_]/g, ' ');
-        if (fallback) {
-            return fallback.replace(/\b\w/g, (letter) => letter.toUpperCase());
-        }
-    }
-
-    return 'Your Organization';
-};
-
 export default function HomePage({ token, currentUser, pools = [], onRefresh, onLogout }) {
     const navigate = useNavigate();
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
@@ -42,7 +25,16 @@ export default function HomePage({ token, currentUser, pools = [], onRefresh, on
     }
 
     const firstName = currentUser?.name ? currentUser.name.split(' ')[0] : 'User';
-    const orgName = getOrganizationName(currentUser);
+    const organizationNames = [...new Set(
+        pools
+            .map((pool) => (typeof pool.organizationName === 'string' ? pool.organizationName.trim() : ''))
+            .filter(Boolean)
+    )];
+    const organizationLabel = organizationNames.length === 1
+        ? organizationNames[0]
+        : organizationNames.length > 1
+            ? 'Multiple Organizations'
+            : 'Your Organization';
 
     return (
         <div className="home-layout">
@@ -53,7 +45,7 @@ export default function HomePage({ token, currentUser, pools = [], onRefresh, on
                 <section className="hero-section">
                     <div className="hero-text-group">
                         <div className="hero-badge-row">
-                            <span className="hero-badge">Computer Science Society</span>
+                            <span className="hero-badge">{organizationLabel}</span>
                             <span className="badge-dot">•</span>
                             <span className="hero-status">Active Session</span>
                         </div>
