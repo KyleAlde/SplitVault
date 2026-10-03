@@ -89,6 +89,72 @@ test('pool administrators are authorized by membership role, not global user rol
   });
 });
 
+test('pool budget cannot be reduced below category allocations or approved pool spending', async () => {
+  for (const scenario of [
+    {
+      allocated: 80,
+      spent: 60,
+      requested: 79.99,
+      error: 'Total budget cannot be lower than allocated category budgets (₱80.00).',
+    },
+    {
+      allocated: 60,
+      spent: 80,
+      requested: 79.99,
+      error: 'Total budget cannot be lower than approved pool spending (₱80.00).',
+    },
+  ]) {
+    let poolUpdated = false;
+    await withPrismaMocks([
+      ...authMocks(),
+      [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+      [prisma, '$queryRaw', async () => []],
+      [prisma.budgetPool, 'findUnique', async () => ({ totalBudget: 100 })],
+      [prisma.category, 'aggregate', async () => ({ _sum: { budget: scenario.allocated } })],
+      [prisma.expenseClaim, 'aggregate', async () => ({ _sum: { amount: scenario.spent } })],
+      [prisma.budgetPool, 'update', async () => {
+        poolUpdated = true;
+        return {};
+      }],
+      [prisma, '$transaction', async (callback) => callback(prisma)],
+    ], async () => {
+      const response = await request(app)
+        .patch(`/api/pools/${TEST_POOL_ID}`)
+        .set('Authorization', authHeader())
+        .send({ totalBudget: scenario.requested });
+      assert.equal(response.status, 400);
+      assert.deepEqual(response.body, { error: scenario.error });
+      assert.equal(poolUpdated, false);
+    });
+  }
+});
+
+test('pool budget can be increased and saves with pool details', async () => {
+  let updatedData;
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+    [prisma, '$queryRaw', async () => []],
+    [prisma.budgetPool, 'findUnique', async () => ({ totalBudget: 100 })],
+    [prisma.category, 'aggregate', async () => ({ _sum: { budget: 75 } })],
+    [prisma.expenseClaim, 'aggregate', async () => ({ _sum: { amount: 50 } })],
+    [prisma.budgetPool, 'update', async ({ data }) => {
+      updatedData = data;
+      return { id: TEST_POOL_ID, name: 'Pool', description: null, totalBudget: data.totalBudget };
+    }],
+    [prisma.auditLog, 'create', async () => ({})],
+    [prisma, '$transaction', async (callback) => callback(prisma)],
+  ], async () => {
+    const response = await request(app)
+      .patch(`/api/pools/${TEST_POOL_ID}`)
+      .set('Authorization', authHeader())
+      .send({ totalBudget: 125 });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.pool.totalBudget, 125);
+    assert.deepEqual(updatedData, { totalBudget: 125 });
+  });
+});
+
 test('pool creation grants the creator pool-admin membership', async () => {
   let createdMember;
   await withPrismaMocks([
@@ -112,6 +178,34 @@ test('pool creation grants the creator pool-admin membership', async () => {
       userId: TEST_USER_ID,
       role: 'ADMIN',
     });
+  });
+});
+
+test('pool creation rejects initial category budgets above the pool total', async () => {
+  let transactionStarted = false;
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma, '$transaction', async () => {
+      transactionStarted = true;
+      throw new Error('Over-budget categories must be rejected before writing');
+    }],
+  ], async () => {
+    const response = await request(app)
+      .post('/api/pools')
+      .set('Authorization', authHeader())
+      .send({
+        name: 'Over-allocated pool',
+        totalBudget: 100,
+        categories: [
+          { name: 'Travel', budget: 60 },
+          { name: 'Meals', budget: 40.01 },
+        ],
+      });
+    assert.equal(response.status, 400);
+    assert.deepEqual(response.body, {
+      error: 'Total category budget (₱100.01) exceeds pool total budget (₱100.00)',
+    });
+    assert.equal(transactionStarted, false);
   });
 });
 
@@ -204,9 +298,12 @@ test('claim review authorization follows the user pool membership role', async (
     [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
     [prisma.expenseClaim, 'findUnique', async () => claim],
     [prisma.expenseClaim, 'aggregate', async () => ({ _sum: { amount: 0 } })],
+    [prisma.category, 'findUnique', async () => ({ id: claim.categoryId, budget: 100 })],
     [prisma.budgetPool, 'findUnique', async () => ({ totalBudget: 100 })],
     [prisma.expenseClaim, 'update', async ({ data }) => ({ ...claim, ...data })],
     [prisma.auditLog, 'create', async () => ({})],
+    [prisma.notification, 'create', async () => ({})],
+    [prisma, '$queryRaw', async () => []],
     [prisma, '$transaction', async (callback) => callback(prisma)],
   ], async () => {
     const response = await request(app)
@@ -227,6 +324,171 @@ test('claim review authorization follows the user pool membership role', async (
       .set('Authorization', authHeader());
     assert.equal(response.status, 403);
     assert.deepEqual(response.body, { error: 'Administrator access required' });
+  });
+});
+
+test('category creation rejects allocations beyond the unallocated reserve', async () => {
+  let categoryCreated = false;
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+    [prisma, '$queryRaw', async () => []],
+    [prisma.budgetPool, 'findUnique', async () => ({ totalBudget: 100 })],
+    [prisma.category, 'aggregate', async () => ({ _sum: { budget: 70 } })],
+    [prisma.category, 'create', async () => {
+      categoryCreated = true;
+      return {};
+    }],
+    [prisma, '$transaction', async (callback) => callback(prisma)],
+  ], async () => {
+    const response = await request(app)
+      .post(`/api/pools/${TEST_POOL_ID}/categories`)
+      .set('Authorization', authHeader())
+      .send({ name: 'Travel', budget: 30.01 });
+    assert.equal(response.status, 400);
+    assert.deepEqual(response.body, {
+      error: 'Insufficient unallocated funds. Max available: ₱30.00',
+    });
+    assert.equal(categoryCreated, false);
+  });
+});
+
+test('category budget reduction cannot go below dynamically aggregated approved spend', async () => {
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+    [prisma, '$queryRaw', async () => []],
+    [prisma.budgetPool, 'findUnique', async () => ({ totalBudget: 100 })],
+    [prisma.category, 'findFirst', async () => ({ id: TEST_REQUEST_ID, budget: 50 })],
+    [prisma.category, 'aggregate', async () => ({ _sum: { budget: 50 } })],
+    [prisma.expenseClaim, 'aggregate', async () => ({ _sum: { amount: 25.50 } })],
+    [prisma.category, 'update', async () => {
+      throw new Error('An invalid category budget must not be saved');
+    }],
+    [prisma, '$transaction', async (callback) => callback(prisma)],
+  ], async () => {
+    const response = await request(app)
+      .patch(`/api/pools/${TEST_POOL_ID}/categories/${TEST_REQUEST_ID}`)
+      .set('Authorization', authHeader())
+      .send({ budget: 25 });
+    assert.equal(response.status, 400);
+    assert.deepEqual(response.body, {
+      error: 'Cannot reduce category budget below current spent amount (₱25.50).',
+    });
+  });
+});
+
+test('category budget increases cannot exceed the current unallocated reserve', async () => {
+  let categoryUpdated = false;
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+    [prisma, '$queryRaw', async () => []],
+    [prisma.budgetPool, 'findUnique', async () => ({ totalBudget: 100 })],
+    [prisma.category, 'findFirst', async () => ({ id: TEST_REQUEST_ID, budget: 50 })],
+    [prisma.category, 'aggregate', async () => ({ _sum: { budget: 90 } })],
+    [prisma.category, 'update', async () => {
+      categoryUpdated = true;
+      return {};
+    }],
+    [prisma, '$transaction', async (callback) => callback(prisma)],
+  ], async () => {
+    const response = await request(app)
+      .patch(`/api/pools/${TEST_POOL_ID}/categories/${TEST_REQUEST_ID}`)
+      .set('Authorization', authHeader())
+      .send({ budget: 61 });
+    assert.equal(response.status, 400);
+    assert.deepEqual(response.body, {
+      error: 'Insufficient unallocated funds. Max available: ₱10.00',
+    });
+    assert.equal(categoryUpdated, false);
+  });
+});
+
+test('claim approval enforces both category and pool spending ceilings', async () => {
+  const categoryId = '55555555-5555-4555-8555-555555555555';
+  const claim = {
+    id: TEST_REQUEST_ID,
+    poolId: TEST_POOL_ID,
+    categoryId,
+    claimantId: TEST_USER_ID,
+    amount: 10,
+    status: 'PENDING',
+    title: 'Test claim',
+    category: { id: categoryId, budget: 100 },
+    claimant: { id: TEST_USER_ID, name: 'Test User', email: 'test@example.com', role: 'CONTRIBUTOR' },
+    receipt: null,
+  };
+
+  for (const scenario of [
+    {
+      name: 'category',
+      category: { id: categoryId, budget: 15 },
+      pool: { totalBudget: 100 },
+      categorySpent: 10,
+      poolSpent: 10,
+      error: 'Claim exceeds remaining category budget.',
+    },
+    {
+      name: 'pool',
+      category: { id: categoryId, budget: 100 },
+      pool: { totalBudget: 15 },
+      categorySpent: 0,
+      poolSpent: 10,
+      error: 'Claim exceeds total remaining pool budget.',
+    },
+  ]) {
+    let claimUpdated = false;
+    await withPrismaMocks([
+      ...authMocks(),
+      [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+      [prisma.expenseClaim, 'findUnique', async () => claim],
+      [prisma, '$queryRaw', async () => []],
+      [prisma.category, 'findUnique', async () => scenario.category],
+      [prisma.budgetPool, 'findUnique', async () => scenario.pool],
+      [prisma.expenseClaim, 'aggregate', async ({ where }) => ({
+        _sum: { amount: where.categoryId ? scenario.categorySpent : scenario.poolSpent },
+      })],
+      [prisma.expenseClaim, 'update', async () => {
+        claimUpdated = true;
+        return {};
+      }],
+      [prisma, '$transaction', async (callback) => callback(prisma)],
+    ], async () => {
+      const response = await request(app)
+        .patch(`/api/claims/${TEST_REQUEST_ID}/approve`)
+        .set('Authorization', authHeader());
+      assert.equal(response.status, 400, scenario.name);
+      assert.deepEqual(response.body, { error: scenario.error }, scenario.name);
+      assert.equal(claimUpdated, false, scenario.name);
+    });
+  }
+});
+
+test('pool detail includes dynamically calculated pool and category spending', async () => {
+  const categoryId = '55555555-5555-4555-8555-555555555555';
+  await withPrismaMocks([
+    ...authMocks(),
+    [prisma.budgetPoolMember, 'findUnique', async () => ({ role: 'ADMIN' })],
+    [prisma.budgetPool, 'findUnique', async () => ({
+      id: TEST_POOL_ID,
+      name: 'Test pool',
+      description: null,
+      totalBudget: 100,
+      categories: [{ id: categoryId, poolId: TEST_POOL_ID, name: 'Travel', budget: 60, color: '#123456' }],
+    })],
+    [prisma.expenseClaim, 'aggregate', async () => ({ _sum: { amount: 17.25 } })],
+    [prisma.expenseClaim, 'groupBy', async () => [{
+      categoryId,
+      _sum: { amount: 17.25 },
+    }]],
+  ], async () => {
+    const response = await request(app)
+      .get(`/api/pools/${TEST_POOL_ID}`)
+      .set('Authorization', authHeader());
+    assert.equal(response.status, 200);
+    assert.equal(response.body.pool.totalSpent, 17.25);
+    assert.equal(response.body.pool.categories[0].totalSpent, 17.25);
   });
 });
 

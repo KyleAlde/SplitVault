@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { getApiErrorMessage } from '../api.js';
 import './SubmitExpenseModal.css';
 
 const MAX_RECEIPT_SIZE = 5 * 1024 * 1024;
@@ -47,6 +48,10 @@ export default function SubmitExpenseModal({ isOpen, onClose, poolId, categories
             setError('Please select a category');
             return;
         }
+        if (exceedsCategoryRemaining) {
+            setError('Amount exceeds remaining category budget');
+            return;
+        }
         const incurredAtDate = new Date(incurredAt);
         if (!incurredAt || Number.isNaN(incurredAtDate.getTime())) {
             setError('Please provide a valid expense date');
@@ -72,22 +77,33 @@ export default function SubmitExpenseModal({ isOpen, onClose, poolId, categories
             setReceiptError('');
             if (receiptInput.current) receiptInput.current.value = '';
         } catch (requestError) {
-            setError(requestError.message);
+            setError(getApiErrorMessage(requestError));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const parsedAmount = Number(amount);
+    const selectedCategory = categories.find((category) => category.id === categoryId);
+    const categoryTotalSpent = Number(selectedCategory?.totalSpent ?? selectedCategory?.spent ?? 0);
+    const categoryRemainingCents = Math.round(Number(selectedCategory?.budget || 0) * 100)
+        - Math.round(categoryTotalSpent * 100);
+    const categoryRemaining = categoryRemainingCents / 100;
+    const exceedsCategoryRemaining = Boolean(selectedCategory)
+        && Number.isFinite(parsedAmount)
+        && parsedAmount > 0
+        && Math.round(parsedAmount * 100) > categoryRemainingCents;
+    const invalidAmount = !amount || !Number.isFinite(parsedAmount) || parsedAmount <= 0;
     const exceedsRemainingBalance = Number.isFinite(remainingBalance)
         && Number.isFinite(parsedAmount)
         && parsedAmount > 0
         && parsedAmount > remainingBalance;
-    const formattedRemainingBalance = new Intl.NumberFormat('en-PH', {
+    const formatCurrency = (value) => new Intl.NumberFormat('en-PH', {
         style: 'currency',
         currency: 'PHP',
         minimumFractionDigits: 2,
-    }).format(remainingBalance || 0);
+    }).format(value || 0);
+    const formattedRemainingBalance = formatCurrency(remainingBalance);
 
     const handleReceiptChange = (event) => {
         const selectedFile = event.target.files?.[0] || null;
@@ -124,16 +140,34 @@ export default function SubmitExpenseModal({ isOpen, onClose, poolId, categories
                 </label>
                 <label>
                     Category
-                    <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} required>
+                    <select value={categoryId} onChange={(event) => {
+                        setCategoryId(event.target.value);
+                        setError('');
+                    }} required>
                         <option value="">Select a category</option>
                         {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                     </select>
+                    {selectedCategory && (
+                        <span className="claim-form-hint">
+                            Category Remaining Balance: {formatCurrency(categoryRemaining)}
+                        </span>
+                    )}
                 </label>
                 <div className="claim-form-row">
                     <label>
                         Amount (PHP)
-                        <input type="number" min="0.01" step="0.01" value={amount} onChange={(event) => { setAmount(event.target.value); setError(''); }} required />
+                        <input type="number" min="0.01" step="0.01" value={amount} onChange={(event) => { setAmount(event.target.value); setError(''); }} required aria-invalid={invalidAmount || exceedsCategoryRemaining} />
                         <span className="claim-form-hint">Enter an amount greater than ₱0.00.</span>
+                        {amount && invalidAmount && (
+                            <span className="claim-form-error" role="alert">
+                                Enter an amount greater than ₱0.00.
+                            </span>
+                        )}
+                        {exceedsCategoryRemaining && (
+                            <span className="claim-form-error" role="alert">
+                                Amount exceeds remaining category budget
+                            </span>
+                        )}
                         {exceedsRemainingBalance && (
                             <span className="claim-budget-warning" role="status">
                                 ⚠️ Warning: This amount exceeds the remaining pool balance of {formattedRemainingBalance}. Admin approval will be blocked.
@@ -165,7 +199,7 @@ export default function SubmitExpenseModal({ isOpen, onClose, poolId, categories
                 {error && <p className="claim-form-error" role="alert">{error}</p>}
                 <div className="claim-modal-actions">
                     <button type="button" className="claim-cancel" onClick={onClose}>Cancel</button>
-                    <button type="submit" className="claim-submit" disabled={isSubmitting || categories.length === 0}>
+                    <button type="submit" className="claim-submit" disabled={isSubmitting || categories.length === 0 || invalidAmount || exceedsCategoryRemaining}>
                         {isSubmitting ? 'Submitting...' : 'Submit for review'}
                     </button>
                 </div>

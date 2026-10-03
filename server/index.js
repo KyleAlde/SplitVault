@@ -286,6 +286,18 @@ function remainingBudget(totalBudget, totalSpent) {
   return Math.max(0, Number(totalBudget) - Number(totalSpent));
 }
 
+function moneyCents(value) {
+  return Math.round(Number(value) * 100);
+}
+
+function formatMoneyCents(cents) {
+  return `₱${(cents / 100).toFixed(2)}`;
+}
+
+async function lockPoolForBudgetUpdate(tx, poolId) {
+  await tx.$queryRaw`SELECT "id" FROM "BudgetPool" WHERE "id" = CAST(${poolId} AS uuid) FOR UPDATE`;
+}
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'SplitVault Backend is running!' });
 });
@@ -393,11 +405,31 @@ app.get('/api/pools/:poolId', authenticate, async (req, res, next) => {
       include: { categories: { orderBy: { name: 'asc' } } },
     });
     if (!pool) throw new ApiError(404, 'Budget pool not found');
+    const [poolSpend, categorySpend] = await Promise.all([
+      prisma.expenseClaim.aggregate({
+        _sum: { amount: true },
+        where: { poolId: pool.id, status: 'APPROVED' },
+      }),
+      prisma.expenseClaim.groupBy({
+        by: ['categoryId'],
+        where: { poolId: pool.id, status: 'APPROVED' },
+        _sum: { amount: true },
+      }),
+    ]);
+    const spentByCategory = new Map(categorySpend.map((item) => [
+      item.categoryId,
+      toNumber(item._sum.amount || 0),
+    ]));
     res.json({
       pool: {
         ...poolView(pool),
         role: member.role,
-        categories: pool.categories.map((category) => ({ ...category, budget: toNumber(category.budget) })),
+        totalSpent: toNumber(poolSpend._sum.amount || 0),
+        categories: pool.categories.map((category) => ({
+          ...category,
+          budget: toNumber(category.budget),
+          totalSpent: spentByCategory.get(category.id) || 0,
+        })),
       },
     });
   } catch (error) { next(error); }
@@ -413,6 +445,18 @@ app.post('/api/pools', authenticate, async (req, res, next) => {
       : null;
 
     const categories = validatePoolCategories(req.body?.categories);
+    const totalCategoryBudgetCents = categories.reduce(
+      (total, category) => total + moneyCents(category.budget),
+      0,
+    );
+    const poolBudgetCents = moneyCents(budget);
+    if (totalCategoryBudgetCents > poolBudgetCents) {
+      throw new ApiError(
+        400,
+        `Total category budget (${formatMoneyCents(totalCategoryBudgetCents)}) exceeds pool total budget (${formatMoneyCents(poolBudgetCents)})`,
+      );
+    }
+
     const pool = await prisma.$transaction(async (tx) => {
       const created = await tx.budgetPool.create({
         data: {
@@ -455,9 +499,41 @@ app.patch('/api/pools/:poolId', authenticate, async (req, res, next) => {
         throw new ApiError(400, 'Pool description must be a string');
       }
     }
+    if ('totalBudget' in req.body) {
+      data.totalBudget = parsePositiveNumber(req.body.totalBudget, 'Total budget');
+    }
 
     if (!Object.keys(data).length) throw new ApiError(400, 'No valid pool fields supplied');
     const pool = await prisma.$transaction(async (tx) => {
+      if ('totalBudget' in data) {
+        await lockPoolForBudgetUpdate(tx, poolId);
+        const [currentPool, allocated, approved] = await Promise.all([
+          tx.budgetPool.findUnique({ where: { id: poolId }, select: { totalBudget: true } }),
+          tx.category.aggregate({ where: { poolId }, _sum: { budget: true } }),
+          tx.expenseClaim.aggregate({
+            _sum: { amount: true },
+            where: { poolId, status: 'APPROVED' },
+          }),
+        ]);
+        if (!currentPool) throw new ApiError(404, 'Budget pool not found');
+
+        const allocatedCents = moneyCents(allocated._sum.budget || 0);
+        const approvedSpendCents = moneyCents(approved._sum.amount || 0);
+        const newBudgetCents = moneyCents(data.totalBudget);
+        if (newBudgetCents < allocatedCents) {
+          throw new ApiError(
+            400,
+            `Total budget cannot be lower than allocated category budgets (${formatMoneyCents(allocatedCents)}).`,
+          );
+        }
+        if (newBudgetCents < approvedSpendCents) {
+          throw new ApiError(
+            400,
+            `Total budget cannot be lower than approved pool spending (${formatMoneyCents(approvedSpendCents)}).`,
+          );
+        }
+      }
+
       const updated = await tx.budgetPool.update({ where: { id: poolId }, data });
       await writeAudit(tx, { action: 'POOL_UPDATED', userId: req.user.id, poolId: updated.id, details: data });
       return updated;
@@ -469,8 +545,25 @@ app.patch('/api/pools/:poolId', authenticate, async (req, res, next) => {
 app.get('/api/pools/:poolId/categories', authenticate, async (req, res, next) => {
   try {
     await membership(req.params.poolId, req.user.id);
-    const categories = await prisma.category.findMany({ where: { poolId: req.params.poolId }, orderBy: { name: 'asc' } });
-    res.json({ categories: categories.map((category) => ({ ...category, budget: toNumber(category.budget) })) });
+    const [categories, groupedSpend] = await Promise.all([
+      prisma.category.findMany({ where: { poolId: req.params.poolId }, orderBy: { name: 'asc' } }),
+      prisma.expenseClaim.groupBy({
+        by: ['categoryId'],
+        where: { poolId: req.params.poolId, status: 'APPROVED' },
+        _sum: { amount: true },
+      }),
+    ]);
+    const spentByCategory = new Map(groupedSpend.map((item) => [
+      item.categoryId,
+      toNumber(item._sum.amount || 0),
+    ]));
+    res.json({
+      categories: categories.map((category) => ({
+        ...category,
+        budget: toNumber(category.budget),
+        totalSpent: spentByCategory.get(category.id) || 0,
+      })),
+    });
   } catch (error) { next(error); }
 });
 
@@ -482,15 +575,111 @@ app.post('/api/pools/:poolId/categories', authenticate, async (req, res, next) =
     const { name, budget } = validateCategoryInput(req.body);
     const color = validateCategoryColor(req.body?.color);
     const category = await prisma.$transaction(async (tx) => {
+      await lockPoolForBudgetUpdate(tx, poolId);
+      const [pool, allocated] = await Promise.all([
+        tx.budgetPool.findUnique({ where: { id: poolId }, select: { totalBudget: true } }),
+        tx.category.aggregate({ where: { poolId }, _sum: { budget: true } }),
+      ]);
+      if (!pool) throw new ApiError(404, 'Budget pool not found');
+
+      const reserveCents = moneyCents(pool.totalBudget) - moneyCents(allocated._sum.budget || 0);
+      if (moneyCents(budget) > reserveCents) {
+        throw new ApiError(
+          400,
+          `Insufficient unallocated funds. Max available: ${formatMoneyCents(reserveCents)}`,
+        );
+      }
+
       const created = await tx.category.create({ data: { poolId, name, budget, color } });
       await writeAudit(tx, { action: 'CATEGORY_CREATED', userId: req.user.id, poolId, details: { name: created.name } });
       return created;
     });
-    res.status(201).json({ category: { ...category, budget: toNumber(category.budget) } });
+    res.status(201).json({
+      category: { ...category, budget: toNumber(category.budget), totalSpent: 0 },
+    });
   } catch (error) {
     next(error?.code === 'P2002' ? new ApiError(409, 'Category already exists in this pool') : error);
   }
 });
+
+async function updateCategory(req, res, next) {
+  try {
+    const { poolId, categoryId } = req.params;
+    validateId(poolId, 'pool ID');
+    validateId(categoryId, 'category ID');
+    await requirePoolAdmin(poolId, req.user.id);
+
+    const data = {};
+    if ('name' in req.body) {
+      data.name = sanitizeText(req.body.name, { fieldName: 'Category name', maxLength: 120 });
+    }
+    if ('budget' in req.body) {
+      data.budget = parsePositiveNumber(req.body.budget, 'Category budget');
+    }
+    if ('color' in req.body) {
+      data.color = validateCategoryColor(req.body.color);
+    }
+    if (!Object.keys(data).length) throw new ApiError(400, 'No valid category fields supplied');
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await lockPoolForBudgetUpdate(tx, poolId);
+      const [pool, category] = await Promise.all([
+        tx.budgetPool.findUnique({ where: { id: poolId }, select: { totalBudget: true } }),
+        tx.category.findFirst({ where: { id: categoryId, poolId } }),
+      ]);
+      if (!pool) throw new ApiError(404, 'Budget pool not found');
+      if (!category) throw new ApiError(404, 'Category not found');
+
+      let totalSpent = 0;
+      if ('budget' in data) {
+        const allocated = await tx.category.aggregate({ where: { poolId }, _sum: { budget: true } });
+        const reserveCents = moneyCents(pool.totalBudget) - moneyCents(allocated._sum.budget || 0);
+        const oldBudgetCents = moneyCents(category.budget);
+        const newBudgetCents = moneyCents(data.budget);
+
+        if (newBudgetCents > oldBudgetCents && newBudgetCents - oldBudgetCents > reserveCents) {
+          throw new ApiError(
+            400,
+            `Insufficient unallocated funds. Max available: ${formatMoneyCents(reserveCents)}`,
+          );
+        }
+
+        if (newBudgetCents < oldBudgetCents) {
+          const spent = await tx.expenseClaim.aggregate({
+            _sum: { amount: true },
+            where: { categoryId, status: 'APPROVED' },
+          });
+          totalSpent = toNumber(spent._sum.amount || 0);
+          if (newBudgetCents < moneyCents(totalSpent)) {
+            throw new ApiError(
+              400,
+              `Cannot reduce category budget below current spent amount (${formatMoneyCents(moneyCents(totalSpent))}).`,
+            );
+          }
+        }
+      }
+
+      const categoryRecord = await tx.category.update({ where: { id: categoryId }, data });
+      if (!('budget' in data) || !totalSpent) {
+        const spent = await tx.expenseClaim.aggregate({
+          _sum: { amount: true },
+          where: { categoryId, status: 'APPROVED' },
+        });
+        totalSpent = toNumber(spent._sum.amount || 0);
+      }
+      return { ...categoryRecord, totalSpent };
+    });
+
+    res.json({
+      category: { ...updated, budget: toNumber(updated.budget) },
+    });
+  } catch (error) {
+    next(error?.code === 'P2002' ? new ApiError(409, 'Category already exists in this pool') : error);
+  }
+}
+
+app.patch('/api/pools/:poolId/categories/:categoryId', authenticate, updateCategory);
+app.put('/api/pools/:poolId/categories/:categoryId', authenticate, updateCategory);
 
 function accessRequestView(accessRequest) {
   return {
@@ -770,35 +959,63 @@ async function reviewClaim(req, res, next, status) {
     const claim = await prisma.expenseClaim.findUnique({ where: { id: req.params.claimId }, include: claimInclude });
     if (!claim) throw new ApiError(404, 'Expense claim not found');
     await requirePoolAdmin(claim.poolId, req.user.id);
-    if (claim.status !== 'PENDING') throw new ApiError(409, 'Only pending claims can be reviewed');
     const updated = await prisma.$transaction(async (tx) => {
+      await lockPoolForBudgetUpdate(tx, claim.poolId);
+      const currentClaim = await tx.expenseClaim.findUnique({
+        where: { id: claim.id },
+        include: claimInclude,
+      });
+      if (!currentClaim) throw new ApiError(404, 'Expense claim not found');
+      if (currentClaim.status !== 'PENDING') throw new ApiError(409, 'Only pending claims can be reviewed');
+
       if (status === 'APPROVED') {
-        const approved = await tx.expenseClaim.aggregate({ _sum: { amount: true }, where: { poolId: claim.poolId, status: 'APPROVED' } });
-        const pool = await tx.budgetPool.findUnique({ where: { id: claim.poolId } });
-        const spent = Number(approved._sum.amount || 0);
-        if (spent + Number(claim.amount) > Number(pool.totalBudget)) throw new ApiError(400, 'Insufficient remaining budget');
+        const [category, pool, categoryApproved, poolApproved] = await Promise.all([
+          tx.category.findUnique({ where: { id: currentClaim.categoryId } }),
+          tx.budgetPool.findUnique({ where: { id: currentClaim.poolId } }),
+          tx.expenseClaim.aggregate({
+            _sum: { amount: true },
+            where: { categoryId: currentClaim.categoryId, status: 'APPROVED' },
+          }),
+          tx.expenseClaim.aggregate({
+            _sum: { amount: true },
+            where: { poolId: currentClaim.poolId, status: 'APPROVED' },
+          }),
+        ]);
+        if (!category || !pool) throw new ApiError(404, 'Claim category or budget pool not found');
+
+        const claimAmountCents = moneyCents(currentClaim.amount);
+        const categoryRemainingCents = moneyCents(category.budget) - moneyCents(categoryApproved._sum.amount || 0);
+        if (claimAmountCents > categoryRemainingCents) {
+          throw new ApiError(400, 'Claim exceeds remaining category budget.');
+        }
+
+        const poolRemainingCents = moneyCents(pool.totalBudget) - moneyCents(poolApproved._sum.amount || 0);
+        if (claimAmountCents > poolRemainingCents) {
+          throw new ApiError(400, 'Claim exceeds total remaining pool budget.');
+        }
       }
       const result = await tx.expenseClaim.update({
-        where: { id: claim.id },
+        where: { id: currentClaim.id },
         data: { status, reviewerId: req.user.id, reviewNote: req.body?.reviewNote, approvedAt: status === 'APPROVED' ? new Date() : null },
         include: claimInclude,
       });
-      await notifyUser(tx, claim.claimantId, {
+      await notifyUser(tx, currentClaim.claimantId, {
         type: status === 'APPROVED' ? 'CLAIM_APPROVED' : 'CLAIM_REJECTED',
         title: status === 'APPROVED' ? 'Expense claim approved' : 'Expense claim rejected',
         message: status === 'APPROVED'
-          ? `Your claim "${claim.title}" was approved.`
-          : `Your claim "${claim.title}" was rejected.`,
-        link: `/pool/${claim.poolId}`,
+          ? `Your claim "${currentClaim.title}" was approved.`
+          : `Your claim "${currentClaim.title}" was rejected.`,
+        link: `/pool/${currentClaim.poolId}`,
       });
-      await writeAudit(tx, { action: status === 'APPROVED' ? 'CLAIM_APPROVED' : 'CLAIM_REJECTED', userId: req.user.id, poolId: claim.poolId, claimId: claim.id, details: { reviewNote: req.body?.reviewNote } });
+      await writeAudit(tx, { action: status === 'APPROVED' ? 'CLAIM_APPROVED' : 'CLAIM_REJECTED', userId: req.user.id, poolId: currentClaim.poolId, claimId: currentClaim.id, details: { reviewNote: req.body?.reviewNote } });
       return result;
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    });
     res.json({ claim: await claimView(updated) });
   } catch (error) { next(error); }
 }
 
 app.post('/api/claims/:claimId/approve', authenticate, (req, res, next) => reviewClaim(req, res, next, 'APPROVED'));
+app.patch('/api/claims/:claimId/approve', authenticate, (req, res, next) => reviewClaim(req, res, next, 'APPROVED'));
 app.post('/api/claims/:claimId/reject', authenticate, (req, res, next) => reviewClaim(req, res, next, 'REJECTED'));
 
 app.get('/api/pools/:poolId/dashboard', authenticate, async (req, res, next) => {

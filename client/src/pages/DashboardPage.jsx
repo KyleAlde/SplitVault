@@ -8,7 +8,7 @@ import Ledger from '../components/Ledger';
 import ReviewPendingModal from '../components/modals/ReviewPendingModal';
 import SubmitExpenseModal from '../components/SubmitExpenseModal';
 import SuccessModal from '../components/SuccessModal';
-import { apiRequest } from '../api.js';
+import { apiRequest, getApiErrorMessage } from '../api.js';
 
 const STATUS_LABELS = { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected' };
 
@@ -113,7 +113,7 @@ export default function DashboardPage({
             }
             return true;
         } catch (error) {
-            setActionError(error.message || 'Unable to update this claim.');
+            setActionError(getApiErrorMessage(error, 'Unable to update this claim.'));
             return false;
         } finally {
             setIsUpdatingClaim(false);

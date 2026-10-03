@@ -1,6 +1,18 @@
-import React, { useState } from 'react';
-import { apiRequest } from '../api.js';
+import { useState } from 'react';
+import { apiRequest, getApiErrorMessage } from '../api.js';
 import './CreatePoolModal.css';
+
+function toCents(value) {
+    return Math.round(Number(value) * 100);
+}
+
+function formatPHP(value) {
+    return new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 2,
+    }).format(value);
+}
 
 export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated }) {
     // Pool details state
@@ -37,6 +49,8 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
         if (!categoryBudget || !Number.isFinite(numBudget) || numBudget <= 0) {
             setCategoryBudgetError('Enter a category budget greater than ₱0.00.');
             hasError = true;
+        } else {
+            setCategoryBudgetError('');
         }
 
         if (hasError) return;
@@ -65,17 +79,23 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
 
     const handleCreatePool = async (event) => {
         event.preventDefault();
-        setIsSaving(true);
         setError('');
 
+        const poolBudget = Number(newPoolBudget);
+        if (!Number.isFinite(poolBudget) || poolBudget <= 0) {
+            return;
+        }
+        if (totalCategoryBudgetCents > toCents(poolBudget)) return;
+
+        setIsSaving(true);
         try {
-            const newPool = await apiRequest('/pools', {
+            const response = await apiRequest('/pools', {
                 token,
                 method: 'POST',
                 body: {
                     name: newPoolName,
                     description: newPoolDescription,
-                    totalBudget: parseFloat(newPoolBudget),
+                    totalBudget: poolBudget,
                     categories: categories.map(({ name, budget, color }) => ({
                         name,
                         budget,
@@ -91,18 +111,26 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
             setCategories([]);
 
             if (onPoolCreated) {
-                onPoolCreated(newPool);
+                onPoolCreated(response.pool);
             } else {
                 onClose();
             }
         } catch (err) {
-            setError(err.message || 'Failed to create budget pool.');
+            setError(getApiErrorMessage(err, 'Failed to create budget pool.'));
         } finally {
             setIsSaving(false);
         }
     };
 
-    const totalAllocated = categories.reduce((sum, cat) => sum + cat.budget, 0);
+    const totalCategoryBudgetCents = categories.reduce((sum, cat) => sum + toCents(cat.budget), 0);
+    const totalAllocated = totalCategoryBudgetCents / 100;
+    const poolBudget = Number(newPoolBudget);
+    const poolBudgetValid = Number.isFinite(poolBudget) && poolBudget > 0;
+    const poolBudgetError = newPoolBudget && !poolBudgetValid
+        ? 'Enter a total budget greater than ₱0.00.'
+        : '';
+    const exceedsPoolBudget = poolBudgetValid && totalCategoryBudgetCents > toCents(poolBudget);
+    const unallocatedReserve = poolBudgetValid ? (toCents(poolBudget) - totalCategoryBudgetCents) / 100 : null;
 
     return (
         <div className="create-pool-overlay" onClick={onClose}>
@@ -152,10 +180,16 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
                                 min="0.01"
                                 step="0.01"
                                 value={newPoolBudget}
-                                onChange={(event) => setNewPoolBudget(event.target.value)}
+                                onChange={(event) => {
+                                    setNewPoolBudget(event.target.value);
+                                    setError('');
+                                }}
                                 placeholder="0.00"
+                                aria-invalid={Boolean(poolBudgetError)}
+                                aria-describedby={poolBudgetError ? 'pool-budget-error' : undefined}
                                 required
                             />
+                            {poolBudgetError && <span id="pool-budget-error" className="create-pool-field-error" role="alert">{poolBudgetError}</span>}
                         </div>
                     </div>
 
@@ -234,7 +268,7 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
                             <div className="categories-header">
                                 <h3>Defined Categories ({categories.length})</h3>
                                 <span className="allocated-badge">
-                                    Allocated: ₱{totalAllocated.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                    Allocated: {formatPHP(totalAllocated)}
                                 </span>
                             </div>
                             <div className="categories-chip-list">
@@ -242,7 +276,7 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
                                     <div key={cat.id} className="category-chip">
                                         <span className="color-dot" style={{ backgroundColor: cat.color }} />
                                         <span className="cat-name">{cat.name}</span>
-                                        <span className="cat-amount">₱{cat.budget.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+                                        <span className="cat-amount">{formatPHP(cat.budget)}</span>
                                         <button
                                             type="button"
                                             className="cat-remove-btn"
@@ -254,6 +288,23 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
                                     </div>
                                 ))}
                             </div>
+                            {poolBudgetValid && (
+                                <p className="create-pool-reserve" role="status">
+                                    Unallocated Reserve: {formatPHP(unallocatedReserve)}
+                                </p>
+                            )}
+                            {exceedsPoolBudget && (
+                                <p className="create-pool-field-error" role="alert">
+                                    Total initial category budget ({formatPHP(totalAllocated)}) cannot exceed pool budget ({formatPHP(poolBudget)})
+                                </p>
+                            )}
+                        </div>
+                    )}
+                    {categories.length === 0 && poolBudgetValid && (
+                        <div className="create-pool-section categories-preview">
+                            <p className="create-pool-reserve" role="status">
+                                Unallocated Reserve: {formatPHP(unallocatedReserve)}
+                            </p>
                         </div>
                     )}
                 </div>
@@ -266,7 +317,7 @@ export default function CreatePoolModal({ isOpen, onClose, token, onPoolCreated 
                         className="create-pool-submit-btn"
                         type="button"
                         onClick={handleCreatePool}
-                        disabled={isSaving || !newPoolName.trim() || !newPoolBudget}
+                        disabled={isSaving || !newPoolName.trim() || !poolBudgetValid || Boolean(poolBudgetError) || exceedsPoolBudget}
                     >
                         {isSaving ? 'Creating...' : 'Create pool'}
                     </button>

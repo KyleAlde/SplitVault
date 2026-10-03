@@ -199,6 +199,13 @@
     border-radius: 4px;
 }
 
+.create-pool-reserve {
+    margin: 12px 0 0;
+    color: #176b5b;
+    font-size: 13px;
+    font-weight: 600;
+}
+
 .categories-chip-list {
     display: flex;
     flex-wrap: wrap;

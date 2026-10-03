@@ -1,5 +1,12 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
+export function getApiErrorMessage(error, fallback = 'An unexpected error occurred.') {
+  return error?.response?.data?.error
+    || error?.data?.error
+    || error?.message
+    || fallback;
+}
+
 export function getAssetUrl(filePath) {
   if (!filePath) return '';
   const baseUrl = new URL(API_BASE_URL, window.location.origin);
